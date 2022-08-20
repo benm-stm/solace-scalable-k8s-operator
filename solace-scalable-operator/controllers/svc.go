@@ -157,31 +157,22 @@ func DeleteSolaceConsoleSvc(solaceScalable *scalablev1alpha1.SolaceScalable, r *
 // TODO: pubsub SVC creation
 func CreatePubSubSvc(solaceScalable *scalablev1alpha1.SolaceScalable, pubSubOpenPorts *[]solaceMergedResp, enabledMsgVpns *solaceMsgVpnsResp, nature string, r *SolaceScalableReconciler, ctx context.Context) (*[]string, *map[string]string, error) {
 	log := log.FromContext(ctx)
-	pubSub := []string{"pub", "sub"}
 	var pubSubSvcNames = []string{}
 	var data = map[string]string{}
 	for i := 0; i < len(*pubSubOpenPorts); i++ {
 		for j := 0; j < len((*pubSubOpenPorts)[i].Ports); j++ {
-			for l := 0; l < len(pubSub); l++ {
-				//if (*pubSubOpenPorts)[i].Ports[j] != 0 {
+			if (*pubSubOpenPorts)[i].Ports[j] != 0 {
 				//create pubsub SVC
-				pubSubSvcNames = append(pubSubSvcNames, (*pubSubOpenPorts)[i].MsgVpnName+"-"+(*pubSubOpenPorts)[i].ClientUsername+"-"+strconv.FormatInt(int64((*pubSubOpenPorts)[i].Ports[j]), 10)+"-"+pubSub[l])
-				pbs := SvcPubSub(solaceScalable, (*pubSubOpenPorts)[i], (*pubSubOpenPorts)[i].Ports[j], pubSub[l])
+				pubSubSvcNames = append(pubSubSvcNames, (*pubSubOpenPorts)[i].MsgVpnName+"-"+(*pubSubOpenPorts)[i].ClientUsername+"-"+strconv.FormatInt(int64((*pubSubOpenPorts)[i].Ports[j]), 10)+"-"+nature)
+				pbs := SvcPubSub(solaceScalable, (*pubSubOpenPorts)[i], (*pubSubOpenPorts)[i].Ports[j], nature)
 				foundPubSubSvc := &corev1.Service{}
-				if err := r.Get(context.TODO(), types.NamespacedName{Name: pbs.Name, Namespace: pbs.Namespace}, foundPubSubSvc); err != nil && errors.IsNotFound(err) {
+				if err := r.Get(context.TODO(), types.NamespacedName{Name: pbs.Name, Namespace: pbs.Namespace}, foundPubSubSvc); err != nil {
 					log.Info("Creating pubSub SVC", pbs.Namespace, pbs.Name)
-					if err = r.Create(context.TODO(), pbs); err != nil && errors.IsNotFound(err) {
+					if err = r.Create(context.TODO(), pbs); err != nil {
 						return nil, nil, err
 					}
-				} else if err != nil {
-					return nil, nil, err
 				}
-				//if pubSub[l] == "sub" {
 				data[strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j]))] = solaceScalable.Namespace + "/" + (*pubSubOpenPorts)[i].MsgVpnName + "-" + (*pubSubOpenPorts)[i].ClientUsername + "-" + strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j])) + "-" + nature + ":" + strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j]))
-				//} else {
-				//data[strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j])+20000)] = solaceScalable.Namespace + "/" + (*pubSubOpenPorts)[i].MsgVpnName + "-" + (*pubSubOpenPorts)[i].ClientUsername + "-" + strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j])) + "-" + pubSub[l] + ":" + strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j]))
-				//}
-				//}
 			}
 		}
 	}

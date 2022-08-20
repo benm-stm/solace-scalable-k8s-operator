@@ -179,12 +179,13 @@ func (r *SolaceScalableReconciler) Reconcile(ctx context.Context, request ctrl.R
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		if err := DeletePubSubSvc(svcList, foundExtraPubSubSvc, pubSvcNames, r, ctx); err != nil {
+
+		//merge pub and sub svc slices
+		pubSubSvcNames := append(*pubSvcNames, *subSvcNames...)
+		if err := DeletePubSubSvc(svcList, foundExtraPubSubSvc, &pubSubSvcNames, r, ctx); err != nil {
 			return reconcile.Result{}, err
 		}
-		if err := DeletePubSubSvc(svcList, foundExtraPubSubSvc, subSvcNames, r, ctx); err != nil {
-			return reconcile.Result{}, err
-		}
+
 	} else {
 		log.Error(err, "Solace API call issue")
 	}
