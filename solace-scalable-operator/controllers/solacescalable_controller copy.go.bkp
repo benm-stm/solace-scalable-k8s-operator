@@ -1,0 +1,330 @@
+/*
+Copyright 2022.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controllers
+
+import (
+	"context"
+	"encoding/json"
+	"sort"
+	"strconv"
+	"time"
+
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	scalablev1alpha1 "solace.io/api/v1alpha1"
+)
+
+// SolaceScalableReconciler reconciles a SolaceScalable object
+type SolaceScalableReconciler struct {
+	client.Client
+	Scheme *runtime.Scheme
+}
+
+//var blacklistedClientUsernames = [1]string{"#client-username"}
+
+var hashStore = make(map[string]string)
+
+//+kubebuilder:rbac:groups=scalable.solace.io,resources=solacescalables,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=scalable.solace.io,resources=solacescalables/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=scalable.solace.io,resources=solacescalables/finalizers,verbs=update
+//+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;delete
+//+kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
+
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
+// TODO(user): Modify the Reconcile function to compare the state specified by
+// the SolaceScalable object against the actual cluster state, and then
+// perform operations to make the cluster state reflect the state specified by
+// the user.
+//
+// For more details, check Reconcile and its Result here:
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.1/pkg/reconcile
+
+func (r *SolaceScalableReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
+	// TODO: Check existance of CRD
+	log := log.FromContext(ctx)
+	solaceScalable := &scalablev1alpha1.SolaceScalable{}
+	if err := r.Get(context.TODO(), request.NamespacedName, solaceScalable); err != nil {
+		if errors.IsNotFound(err) {
+			// Object not found, return.  Created objects are automatically garbage collected.
+			// For additional cleanup logic use finalizers.
+			return reconcile.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return reconcile.Result{}, err
+	}
+
+	// TODO: Solace statefulset creation
+	ss := Statefulset(solaceScalable)
+	if err := controllerutil.SetControllerReference(solaceScalable, ss, r.Scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+	foundSs, err := CreateStatefulSet(ss, r, ctx)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if err := UpdateStatefulSet(ss, foundSs, r, ctx, &hashStore); err != nil {
+		return reconcile.Result{}, err
+	}
+	/*
+		// TODO: Solace statefulset creation
+		// Define the desired statefulset object
+		ss := Statefulset(instance)
+		if err := controllerutil.SetControllerReference(instance, ss, r.Scheme); err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Check if the statefulset already exists
+		foundSs := &v1.StatefulSet{}
+		if err := r.Get(context.TODO(), types.NamespacedName{Name: ss.Name, Namespace: ss.Namespace}, foundSs); err != nil && errors.IsNotFound(err) {
+			log.Info("Creating Statefulset", ss.Namespace, ss.Name)
+			if err = r.Create(context.TODO(), ss); err != nil {
+				return reconcile.Result{}, err
+			}
+		} else if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Update the found object and write the result back if there are any changes
+		foundSs.Spec = ss.Spec
+		newMarshal, _ := json.Marshal(foundSs)
+		if len(hashStore) == 0 {
+			hashStore[foundSs.Name] = asSha256(newMarshal)
+		} else if asSha256(newMarshal) != hashStore[foundSs.Name] {
+			log.Info("Updating StatefulSet", "StatefulSet.Namespace", foundSs.Namespace, "StatefulSet.Name", foundSs.Name)
+			if err := r.Update(ctx, foundSs); err != nil {
+				log.Error(err, "Failed to update StatefulSet", "StatefulSet.Namespace", foundSs.Namespace, "StatefulSet.Name", foundSs.Name)
+				return ctrl.Result{}, err
+			}
+			hashStore[foundSs.Name] = asSha256(newMarshal)
+		}
+	*/
+
+	/*
+		// TODO: http solace 8080 SVC per node creation *****************************************************************************
+		//create console services
+		for i := 0; i < int(instance.Spec.Replicas); i++ {
+			svc := SvcConsole(instance, i)
+			if err := controllerutil.SetControllerReference(instance, svc, r.Scheme); err != nil {
+				return reconcile.Result{}, err
+			}
+
+			// Check if the console svc already exists
+			foundSvc := &corev1.Service{}
+			if err := r.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, foundSvc); err != nil && errors.IsNotFound(err) {
+				log.Info("Creating Svc", svc.Namespace, svc.Name)
+				if err = r.Create(context.TODO(), svc); err != nil {
+					return reconcile.Result{}, err
+				}
+			} else if err != nil {
+				return reconcile.Result{}, err
+			}
+
+			// TODO : create pvs if pvClass is localManual
+			if instance.Spec.PvClass == "localManual" {
+				pv := PersistentVolume(instance, strconv.Itoa(i))
+				foundpv := &corev1.PersistentVolume{}
+				if err := r.Get(context.TODO(), types.NamespacedName{Name: pv.Name, Namespace: pv.Namespace}, foundpv); err != nil && errors.IsNotFound(err) {
+					log.Info("Creating pv", pv.Namespace, pv.Name)
+					if err = r.Create(context.TODO(), pv); err != nil {
+						return reconcile.Result{}, err
+					}
+				} else if err != nil {
+					return reconcile.Result{}, err
+				}
+			}
+		}
+	*/
+	for i := 0; i < int(solaceScalable.Spec.Replicas); i++ {
+		//create solace instance http console service
+		svc := SvcConsole(solaceScalable, i)
+		if err := controllerutil.SetControllerReference(solaceScalable, svc, r.Scheme); err != nil {
+			return reconcile.Result{}, err
+		}
+		if err := CreateSolaceConsoleSvc(svc, r); err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// create solace instances PV
+		if err := createSolaceLocalPv(solaceScalable, i, r); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	//create ingress console services
+	foundIngress := &netv1.Ingress{}
+	ingConsole := IngressConsole(solaceScalable)
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: ingConsole.Name, Namespace: ingConsole.Namespace}, foundIngress); err != nil && errors.IsNotFound(err) {
+		log.Info("Creating Solace Console Ingress", ingConsole.Namespace, ingConsole.Name)
+		if err = r.Create(context.TODO(), ingConsole); err != nil && errors.IsNotFound(err) {
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	//delete extra console services
+	i := int(solaceScalable.Spec.Replicas)
+	// loop indefinitely until not finding an existi_ng console service
+	for true {
+		svc := SvcConsole(solaceScalable, i)
+		foundExtraSvc := &corev1.Service{}
+		if err := r.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, foundExtraSvc); err != nil && errors.IsNotFound(err) {
+			break
+		} else {
+			log.Info("Delete Solace Console Service", svc.Namespace, svc.Name)
+			r.Delete(ctx, foundExtraSvc)
+			i++
+		}
+	}
+
+	// TODO: pubsub SVC creation
+	var pubSubSvcNames = []string{}
+	pubSub := []string{"pub", "sub"}
+	var data = map[string]string{}
+
+	enabledMsgVpns := getEnabledSolaceMsgVpns(solaceScalable)
+	pubSubOpenPorts := mergeSolaceResponses(enabledMsgVpns, getSolaceClientUsernames(solaceScalable, enabledMsgVpns)).Data
+
+	for i := 0; i < len(pubSubOpenPorts); i++ {
+		for j := 0; j < len(pubSubOpenPorts[i].Ports); j++ {
+			for l := 0; l < len(pubSub); l++ {
+				if pubSubOpenPorts[i].Ports[j] != 0 {
+					//create pubsub SVC
+					pubSubSvcNames = append(pubSubSvcNames, pubSubOpenPorts[i].MsgVpnName+"-"+pubSubOpenPorts[i].ClientUsername+"-"+strconv.FormatInt(int64(pubSubOpenPorts[i].Ports[j]), 10)+"-"+pubSub[l])
+					pbs := SvcPubSub(solaceScalable, pubSubOpenPorts[i], pubSubOpenPorts[i].Ports[j], pubSub[l])
+					foundPubSubSvc := &corev1.Service{}
+					if err := r.Get(context.TODO(), types.NamespacedName{Name: pbs.Name, Namespace: pbs.Namespace}, foundPubSubSvc); err != nil && errors.IsNotFound(err) {
+						log.Info("Creating pubSub SVC", pbs.Namespace, pbs.Name)
+						if err = r.Create(context.TODO(), pbs); err != nil && errors.IsNotFound(err) {
+							return reconcile.Result{}, err
+						}
+					} else if err != nil {
+						return reconcile.Result{}, err
+					}
+					if pubSub[l] == "sub" {
+						data[strconv.Itoa(int(pubSubOpenPorts[i].Ports[j]))] = solaceScalable.Namespace + "/" + pubSubOpenPorts[i].MsgVpnName + "-" + pubSubOpenPorts[i].ClientUsername + "-" + strconv.Itoa(int(pubSubOpenPorts[i].Ports[j])) + "-" + pubSub[l] + ":" + strconv.Itoa(int(pubSubOpenPorts[i].Ports[j]))
+					} else {
+						data[strconv.Itoa(int(pubSubOpenPorts[i].Ports[j])+20000)] = solaceScalable.Namespace + "/" + pubSubOpenPorts[i].MsgVpnName + "-" + pubSubOpenPorts[i].ClientUsername + "-" + strconv.Itoa(int(pubSubOpenPorts[i].Ports[j])) + "-" + pubSub[l] + ":" + strconv.Itoa(int(pubSubOpenPorts[i].Ports[j]))
+					}
+				}
+			}
+		}
+	}
+	// TODO: HAProxy Ingress
+	//get existing haproxy svc
+	FoundHaproxySvc := &corev1.Service{}
+	newMarshal := []byte{}
+	if err := r.Get(context.TODO(), types.NamespacedName{Namespace: solaceScalable.Spec.Haproxy.Namespace, Name: solaceScalable.Spec.Haproxy.ServiceName}, FoundHaproxySvc); err != nil && errors.IsNotFound(err) {
+		newMarshal, _ = json.Marshal(FoundHaproxySvc.Spec.Ports)
+		log.Info("HAProxy service is not found", FoundHaproxySvc.Namespace, FoundHaproxySvc.Name)
+		return reconcile.Result{}, err
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	//set the new data in the found svc
+	FoundHaproxySvc.Spec.Ports = *SvcHaproxy(solaceScalable, FoundHaproxySvc.Spec.Ports, data)
+	// sort the data (ports cause marshall to fail)
+	sort.Slice(FoundHaproxySvc.Spec.Ports, func(i, j int) bool {
+		return FoundHaproxySvc.Spec.Ports[i].Name < FoundHaproxySvc.Spec.Ports[j].Name
+	})
+	portsMarshal, _ := json.Marshal(FoundHaproxySvc.Spec.Ports)
+
+	if len(hashStore) == 0 {
+		hashStore[FoundHaproxySvc.Name] = asSha256(portsMarshal)
+	} else if asSha256(portsMarshal) != hashStore[FoundHaproxySvc.Name] {
+		log.Info("Updating Haproxy Svc", FoundHaproxySvc.Namespace, FoundHaproxySvc.Name)
+		hashStore[FoundHaproxySvc.Name] = asSha256(portsMarshal)
+		if err := r.Update(context.TODO(), FoundHaproxySvc); err != nil && errors.IsNotFound(err) {
+			return reconcile.Result{}, err
+		} else if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	//create tcp ingress configmap
+	data["balance-algorithm"] = "leastconn"
+	configMap := tcpConfigMap(solaceScalable, data)
+
+	FoundHaproxyConfigMap := &corev1.ConfigMap{}
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: configMap.Name, Namespace: configMap.Namespace}, FoundHaproxyConfigMap); err != nil && errors.IsNotFound(err) {
+		log.Info("Creating HAProxy Ingress ConfigMap", configMap.Namespace, configMap.Name)
+		err = r.Create(context.TODO(), configMap)
+		return reconcile.Result{}, err
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	newMarshal, _ = json.Marshal(FoundHaproxyConfigMap.Data)
+	datasMarshal, _ := json.Marshal(configMap.Data)
+
+	if len(hashStore) == 0 {
+		hashStore[FoundHaproxyConfigMap.Name] = asSha256(newMarshal)
+	} else if asSha256(datasMarshal) != hashStore[FoundHaproxyConfigMap.Name] {
+		log.Info("Updating HAProxy Ingress ConfigMap", configMap.Namespace, configMap.Name)
+		FoundHaproxyConfigMap.Data = configMap.Data
+		hashStore[FoundHaproxyConfigMap.Name] = asSha256(datasMarshal)
+		if err := r.Update(context.TODO(), FoundHaproxyConfigMap); err != nil && errors.IsNotFound(err) {
+			return reconcile.Result{}, err
+		}
+	}
+
+	//TODO: cleanup pubSubSvc services
+	// get existing svc list
+	foundExtraPubSubSvc := &corev1.Service{}
+	svcList := &corev1.ServiceList{}
+	listOptions := &client.ListOptions{Namespace: solaceScalable.Namespace}
+
+	if err := r.List(context.TODO(), svcList, listOptions); err != nil && errors.IsNotFound(err) {
+		return reconcile.Result{}, err
+	}
+
+	for i := 0; i < len(svcList.Items); i++ {
+		if !stringInSlice(svcList.Items[i].Name, pubSubSvcNames) && svcList.Items[i].Spec.Ports[0].Port != 8080 {
+			if err := r.Get(context.TODO(), types.NamespacedName{Namespace: svcList.Items[i].Namespace, Name: svcList.Items[i].Name}, foundExtraPubSubSvc); err != nil && errors.IsNotFound(err) {
+				break
+			} else {
+				log.Info("Delete PubSubSvc", svcList.Items[i].Namespace, svcList.Items[i].Name)
+				r.Delete(context.TODO(), foundExtraPubSubSvc)
+			}
+		}
+	}
+
+	return reconcile.Result{RequeueAfter: time.Second * 10}, nil
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *SolaceScalableReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&scalablev1alpha1.SolaceScalable{}).
+		Owns(&v1.StatefulSet{}).
+		Owns(&corev1.Service{}).
+		//WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
+		Complete(r)
+}

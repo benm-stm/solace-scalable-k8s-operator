@@ -1,0 +1,148 @@
+package controllers
+/*
+import (
+	"strconv"
+
+	v1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	scalablev1alpha1 "solace.io/api/v1alpha1"
+	
+)
+
+/*func ss(s *scalablev1alpha1.SolaceScalable, m solaceMergedResp, p int32, pubSub string) *corev1.Service {
+	labels := labels(s)
+	name := s.Name
+
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name + "-" + m.MsgVpnName + "-" + m.ClientUsername + "-" + strconv.FormatInt(int64(p), 10) + "-" + pubSub,
+			Namespace: s.Namespace,
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: labels,
+			Ports: []corev1.ServicePort{{
+				Protocol: corev1.ProtocolTCP,
+				//TargetPort: intstr.FromInt(int(p)),
+				Port: p,
+			}},
+			//Type: corev1.ServiceTypeLoadBalancer,
+			Type: corev1.ServiceTypeClusterIP,
+		},
+	}
+}
+
+func IngressPubSub(s *scalablev1alpha1.SolaceScalable, paths []v1.HTTPIngressPath) *v1.Ingress {
+	labels := labels(s)
+	icn := "nginx"
+	//fmt.Println(m)
+	//fmt.Println(p)
+	//fmt.Println(pubSub)
+	//os.Exit(1)
+	annotations := map[string]string{
+		"nginx.ingress.kubernetes.io/rewrite-target": "/",
+		//"ingress.kubernetes.io/add-base-url":         "true",
+		//"nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
+		//"nginx.ingress.kubernetes.io/ssl-passthrough":    "true",
+		//"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+	}
+
+	return &v1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        s.Name + "-pubsub",
+			Namespace:   s.Namespace,
+			Labels:      labels,
+			Annotations: annotations,
+		},
+		Spec: v1.IngressSpec{
+			IngressClassName: &icn,
+			Rules: []v1.IngressRule{
+				{
+					Host: s.Spec.ClusterUrl,
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: paths,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func IngressPubSubPaths(s *scalablev1alpha1.SolaceScalable, m solaceMergedResp, p int32, pubSub string) v1.HTTPIngressPath {
+	prefix := v1.PathTypePrefix
+	//var paths = []v1.HTTPIngressPath{}
+	path := v1.HTTPIngressPath{
+		Path:     "/" + m.ClientUsername + "/" + strconv.Itoa(int(p)) + "/" + pubSub,
+		PathType: &prefix,
+		Backend: v1.IngressBackend{
+			Service: &v1.IngressServiceBackend{
+				//solacescalable-default-default-1883-pub
+				Name: s.Namespace + "-" + m.ClientUsername + "-" + m.MsgVpnName + "-" + strconv.Itoa(int(p)) + "-" + pubSub,
+				Port: v1.ServiceBackendPort{
+					Number: p,
+				},
+			},
+		},
+	}
+	//paths = append(paths, path)
+
+	return path
+}
+
+func IngressConsole(s *scalablev1alpha1.SolaceScalable) *v1.Ingress {
+	labels := labels(s)
+	icn := "nginx"
+	annotations := map[string]string{
+		//"nginx.ingress.kubernetes.io/rewrite-target": "/$1",
+		"ingress.kubernetes.io/add-base-url": "true",
+		//"nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
+		//"nginx.ingress.kubernetes.io/ssl-passthrough":    "true",
+		//"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+	}
+
+	return &v1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        s.Name + "-console",
+			Namespace:   s.Namespace,
+			Labels:      labels,
+			Annotations: annotations,
+		},
+		Spec: v1.IngressSpec{
+			IngressClassName: &icn,
+			Rules:            IngressConsoleRules(s),
+		},
+	}
+}
+
+func IngressConsoleRules(s *scalablev1alpha1.SolaceScalable) []v1.IngressRule {
+	prefix := v1.PathTypePrefix
+	var rules = []v1.IngressRule{}
+	for i := 0; i < int(s.Spec.Replicas); i++ {
+		rule := v1.IngressRule{
+			Host: "n" + strconv.Itoa(i) + "." + s.Spec.ClusterUrl,
+			IngressRuleValue: v1.IngressRuleValue{
+				HTTP: &v1.HTTPIngressRuleValue{
+					Paths: []v1.HTTPIngressPath{
+						{
+							Path:     "/",
+							PathType: &prefix,
+							Backend: v1.IngressBackend{
+								Service: &v1.IngressServiceBackend{
+									Name: s.Namespace + "-" + strconv.Itoa(i),
+									Port: v1.ServiceBackendPort{
+										Number: 8080,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		rules = append(rules, rule)
+	}
+
+	return rules
+}
+*/

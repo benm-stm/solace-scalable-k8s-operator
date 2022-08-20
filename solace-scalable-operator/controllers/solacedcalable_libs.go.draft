@@ -1,0 +1,59 @@
+package controllers
+
+/*func Pod(pod *scalablev1alpha1.SolaceScalable, replicaNbr string) *corev1.Pod {
+	name := "-node" + replicaNbr
+	labels := map[string]string{
+		"app": pod.Name + name,
+	}
+
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pod.Name + name,
+			Namespace: pod.Namespace,
+			Labels:    labels,
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:  "solace" + name,
+					Image: pod.Spec.Image,
+					//Command: strings.Split(pod.Spec.Command, " "),
+				},
+			},
+			RestartPolicy: corev1.RestartPolicyOnFailure,
+		},
+	}
+}*/
+
+/*
+func PersistentVolumeClaim(pvc *scalablev1alpha1.SolaceScalable, replicaNbr string) *corev1.PersistentVolumeClaim {
+	pvName := pvc.Name + "volume-node" + replicaNbr
+
+	pvLabels := map[string]string{
+		"app": pvc.Name + pvName,
+	}
+
+	name := "volumeclame-node" + replicaNbr
+	labels := map[string]string{
+		"app": pvc.Name + name,
+	}
+
+	return &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pvc.Name + name,
+			Namespace: pvc.Namespace,
+			Labels:    labels},
+
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			Selector:    &metav1.LabelSelector{MatchLabels: pvLabels},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					"storage":  resource.MustParse("10Gi"),
+					"capacity": resource.MustParse("10Gi"),
+				},
+			},
+			VolumeName: pvName,
+		},
+	}
+}*/

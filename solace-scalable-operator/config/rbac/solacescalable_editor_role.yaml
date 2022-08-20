@@ -1,0 +1,24 @@
+# permissions for end users to edit solacescalables.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: solacescalable-editor-role
+rules:
+- apiGroups:
+  - scalable.solace.io
+  resources:
+  - solacescalables
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - scalable.solace.io
+  resources:
+  - solacescalables/status
+  verbs:
+  - get
