@@ -63,8 +63,16 @@ spec:
                 properties:
                   namespace:
                     type: string
-                  serviceName:
-                    type: string
+                  publish:
+                    properties:
+                      serviceName:
+                        type: string
+                    type: object
+                  subscribe:
+                    properties:
+                      serviceName:
+                        type: string
+                    type: object
                 type: object
               pvClass:
                 type: string

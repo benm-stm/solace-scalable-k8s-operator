@@ -68,7 +68,14 @@ type SolaceScalable struct {
 }
 
 type Haproxy struct {
-	Namespace   string `json:"namespace,omitempty"`
+	Namespace string    `json:"namespace,omitempty"`
+	Publish   Publish   `json:"publish,omitempty"`
+	Subscribe Subscribe `json:"subscribe,omitempty"`
+}
+type Publish struct {
+	ServiceName string `json:"serviceName,omitempty"`
+}
+type Subscribe struct {
 	ServiceName string `json:"serviceName,omitempty"`
 }
 

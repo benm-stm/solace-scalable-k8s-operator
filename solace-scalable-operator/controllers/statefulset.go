@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -156,12 +155,10 @@ func CreateStatefulSet(ss *v1.StatefulSet, r *SolaceScalableReconciler, ctx cont
 // Update the found object and write the result back if there are any changes
 func UpdateStatefulSet(ss *v1.StatefulSet, foundSs *v1.StatefulSet, r *SolaceScalableReconciler, ctx context.Context, hashStore *map[string]string) error {
 	log := log.FromContext(ctx)
-	newMarshal, _ := json.Marshal(foundSs)
+	newMarshal, _ := json.Marshal(foundSs.Spec)
 	if len(*hashStore) == 0 {
-		newMarshal, _ := json.Marshal(ss)
 		(*hashStore)[ss.Name] = asSha256(newMarshal)
 	} else if asSha256(newMarshal) != (*hashStore)[ss.Name] {
-		fmt.Println((*hashStore)[ss.Name])
 		log.Info("Updating StatefulSet", "StatefulSet.Namespace", ss.Namespace, "StatefulSet.Name", ss.Name)
 		if err := r.Update(ctx, ss); err != nil {
 			return err

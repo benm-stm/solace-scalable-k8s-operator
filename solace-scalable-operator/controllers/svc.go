@@ -119,7 +119,6 @@ func getDefaultHaProxyConf(servicePorts []corev1.ServicePort) *[]corev1.ServiceP
 	return &svcPorts
 }
 
-// TODO: http solace 8080 SVC per node creation *****************************************************************************
 //create console service
 func CreateSolaceConsoleSvc(svc *corev1.Service, r *SolaceScalableReconciler, ctx context.Context) error {
 	// Check if the console svc already exists
@@ -156,7 +155,7 @@ func DeleteSolaceConsoleSvc(solaceScalable *scalablev1alpha1.SolaceScalable, r *
 }
 
 // TODO: pubsub SVC creation
-func CreatePubSubSvc(solaceScalable *scalablev1alpha1.SolaceScalable, pubSubOpenPorts *[]solaceMergedResp, enabledMsgVpns *solaceMsgVpnsResp, r *SolaceScalableReconciler, ctx context.Context) (*[]string, *map[string]string, error) {
+func CreatePubSubSvc(solaceScalable *scalablev1alpha1.SolaceScalable, pubSubOpenPorts *[]solaceMergedResp, enabledMsgVpns *solaceMsgVpnsResp, nature string, r *SolaceScalableReconciler, ctx context.Context) (*[]string, *map[string]string, error) {
 	log := log.FromContext(ctx)
 	pubSub := []string{"pub", "sub"}
 	var pubSubSvcNames = []string{}
@@ -164,36 +163,36 @@ func CreatePubSubSvc(solaceScalable *scalablev1alpha1.SolaceScalable, pubSubOpen
 	for i := 0; i < len(*pubSubOpenPorts); i++ {
 		for j := 0; j < len((*pubSubOpenPorts)[i].Ports); j++ {
 			for l := 0; l < len(pubSub); l++ {
-				if (*pubSubOpenPorts)[i].Ports[j] != 0 {
-					//create pubsub SVC
-					pubSubSvcNames = append(pubSubSvcNames, (*pubSubOpenPorts)[i].MsgVpnName+"-"+(*pubSubOpenPorts)[i].ClientUsername+"-"+strconv.FormatInt(int64((*pubSubOpenPorts)[i].Ports[j]), 10)+"-"+pubSub[l])
-					pbs := SvcPubSub(solaceScalable, (*pubSubOpenPorts)[i], (*pubSubOpenPorts)[i].Ports[j], pubSub[l])
-					foundPubSubSvc := &corev1.Service{}
-					if err := r.Get(context.TODO(), types.NamespacedName{Name: pbs.Name, Namespace: pbs.Namespace}, foundPubSubSvc); err != nil && errors.IsNotFound(err) {
-						log.Info("Creating pubSub SVC", pbs.Namespace, pbs.Name)
-						if err = r.Create(context.TODO(), pbs); err != nil && errors.IsNotFound(err) {
-							return nil, nil, err
-						}
-					} else if err != nil {
+				//if (*pubSubOpenPorts)[i].Ports[j] != 0 {
+				//create pubsub SVC
+				pubSubSvcNames = append(pubSubSvcNames, (*pubSubOpenPorts)[i].MsgVpnName+"-"+(*pubSubOpenPorts)[i].ClientUsername+"-"+strconv.FormatInt(int64((*pubSubOpenPorts)[i].Ports[j]), 10)+"-"+pubSub[l])
+				pbs := SvcPubSub(solaceScalable, (*pubSubOpenPorts)[i], (*pubSubOpenPorts)[i].Ports[j], pubSub[l])
+				foundPubSubSvc := &corev1.Service{}
+				if err := r.Get(context.TODO(), types.NamespacedName{Name: pbs.Name, Namespace: pbs.Namespace}, foundPubSubSvc); err != nil && errors.IsNotFound(err) {
+					log.Info("Creating pubSub SVC", pbs.Namespace, pbs.Name)
+					if err = r.Create(context.TODO(), pbs); err != nil && errors.IsNotFound(err) {
 						return nil, nil, err
 					}
-					if pubSub[l] == "sub" {
-						data[strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j]))] = solaceScalable.Namespace + "/" + (*pubSubOpenPorts)[i].MsgVpnName + "-" + (*pubSubOpenPorts)[i].ClientUsername + "-" + strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j])) + "-" + pubSub[l] + ":" + strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j]))
-					} else {
-						data[strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j])+20000)] = solaceScalable.Namespace + "/" + (*pubSubOpenPorts)[i].MsgVpnName + "-" + (*pubSubOpenPorts)[i].ClientUsername + "-" + strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j])) + "-" + pubSub[l] + ":" + strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j]))
-					}
+				} else if err != nil {
+					return nil, nil, err
 				}
+				//if pubSub[l] == "sub" {
+				data[strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j]))] = solaceScalable.Namespace + "/" + (*pubSubOpenPorts)[i].MsgVpnName + "-" + (*pubSubOpenPorts)[i].ClientUsername + "-" + strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j])) + "-" + nature + ":" + strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j]))
+				//} else {
+				//data[strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j])+20000)] = solaceScalable.Namespace + "/" + (*pubSubOpenPorts)[i].MsgVpnName + "-" + (*pubSubOpenPorts)[i].ClientUsername + "-" + strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j])) + "-" + pubSub[l] + ":" + strconv.Itoa(int((*pubSubOpenPorts)[i].Ports[j]))
+				//}
+				//}
 			}
 		}
 	}
 	return &pubSubSvcNames, &data, nil
 }
 
-func GetExistingHaProxySvc(solaceScalable *scalablev1alpha1.SolaceScalable, r *SolaceScalableReconciler, ctx context.Context) (*corev1.Service, error) {
+func GetExistingHaProxySvc(solaceScalable *scalablev1alpha1.SolaceScalable, serviceName string, r *SolaceScalableReconciler, ctx context.Context) (*corev1.Service, error) {
 	log := log.FromContext(ctx)
 	FoundHaproxySvc := &corev1.Service{}
 	//newMarshal := []byte{}
-	if err := r.Get(context.TODO(), types.NamespacedName{Namespace: solaceScalable.Spec.Haproxy.Namespace, Name: solaceScalable.Spec.Haproxy.ServiceName}, FoundHaproxySvc); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Namespace: solaceScalable.Spec.Haproxy.Namespace, Name: serviceName}, FoundHaproxySvc); err != nil {
 		//newMarshal, _ = json.Marshal(FoundHaproxySvc.Spec.Ports)
 		log.Info("HAProxy service is not found", FoundHaproxySvc.Namespace, FoundHaproxySvc.Name)
 		return nil, err

@@ -13,13 +13,13 @@ import (
 	scalablev1alpha1 "solace.io/api/v1alpha1"
 )
 
-func tcpConfigMap(s *scalablev1alpha1.SolaceScalable, data map[string]string) *v1.ConfigMap {
+func tcpConfigMap(s *scalablev1alpha1.SolaceScalable, data map[string]string, nature string) *v1.ConfigMap {
 	labels := labels(s)
 	//fmt.Printf("%v", data)
 
 	return &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      s.Name + "-tcp-ingress",
+			Name:      s.Name + "-" + nature + "-tcp-ingress",
 			Namespace: s.Namespace,
 			Labels:    labels,
 		},
@@ -28,29 +28,11 @@ func tcpConfigMap(s *scalablev1alpha1.SolaceScalable, data map[string]string) *v
 	}
 }
 
-// haproxy
-/*func tcpConfigMap(s *scalablev1alpha1.SolaceScalable, data map[string]string) *v1.ConfigMap {
-	labels := labels(s)
-
-	return &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      s.Name + "-tcp-ingress",
-			Namespace: s.Namespace,
-			Labels:    labels,
-		},
-		Data: map[string]string{
-			"balance-algorithm": "leastconn",
-			"max-connections":   "10000",
-			"ssl-redirect":      "true",
-		},
-	}
-}*/
-
 //create tcp ingress configmap
-func CreateTcpIngressConfigmap(data *map[string]string, solaceScalable *scalablev1alpha1.SolaceScalable, r *SolaceScalableReconciler, ctx context.Context) (*v1.ConfigMap, *v1.ConfigMap, error) {
+func CreateTcpIngressConfigmap(data *map[string]string, nature string, solaceScalable *scalablev1alpha1.SolaceScalable, r *SolaceScalableReconciler, ctx context.Context) (*v1.ConfigMap, *v1.ConfigMap, error) {
 	log := log.FromContext(ctx)
 	(*data)["balance-algorithm"] = "leastconn"
-	configMap := tcpConfigMap(solaceScalable, *data)
+	configMap := tcpConfigMap(solaceScalable, *data, nature)
 
 	FoundHaproxyConfigMap := &corev1.ConfigMap{}
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: configMap.Name, Namespace: configMap.Namespace}, FoundHaproxyConfigMap); err != nil && errors.IsNotFound(err) {
@@ -61,6 +43,7 @@ func CreateTcpIngressConfigmap(data *map[string]string, solaceScalable *scalable
 	return configMap, FoundHaproxyConfigMap, nil
 }
 
+//update tcp ingress configmap
 func UpdateTcpIngressConfigmap(FoundHaproxyConfigMap *v1.ConfigMap, configMap *v1.ConfigMap, solaceScalable *scalablev1alpha1.SolaceScalable, r *SolaceScalableReconciler, ctx context.Context) error {
 	log := log.FromContext(ctx)
 	newMarshal, _ := json.Marshal(FoundHaproxyConfigMap.Data)

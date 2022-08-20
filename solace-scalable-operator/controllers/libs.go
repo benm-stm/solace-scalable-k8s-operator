@@ -73,25 +73,28 @@ func cleanJsonResponse(s string, r string) []int32 {
 	return ret
 }
 
-func callSolaceSempApi(s *scalablev1alpha1.SolaceScalable, apiPath string) string {
+func CallSolaceSempApi(s *scalablev1alpha1.SolaceScalable, apiPath string) (string, error) {
 	for i := 0; i < int(s.Spec.Replicas); i++ {
-		//name := s.Name + "-" + strconv.Itoa(i)
-		//url := s.name + "." + s.Namespace + ".svc.cluster.local"
-		//url := "35.195.99.220"
 		url := "n" + strconv.Itoa(i) + "." + s.Spec.ClusterUrl
 
 		client := &http.Client{}
-		//req, err := http.NewRequest("GET", "http://"+url+":8080/SEMP/v2"+apiPath, nil)
 		req, err := http.NewRequest("GET", "http://"+url+"/SEMP/v2"+apiPath, nil)
+		if err != nil {
+			return "", err
+		}
 		req.SetBasicAuth("admin", getEnv(s, "username_admin_password"))
 		resp, err := client.Do(req)
 		if err != nil {
-			fmt.Println(err)
+			return "", err
 		}
 		bodyText, err := ioutil.ReadAll(resp.Body)
-		return string(bodyText)
+		if err != nil {
+			return "", err
+		}
+		return string(bodyText), nil
 	}
-	return ""
+	fmt.Println("retrned emptyyyyyyyyyyyyy")
+	return "", nil
 }
 
 func contains(s []string, str string) bool {

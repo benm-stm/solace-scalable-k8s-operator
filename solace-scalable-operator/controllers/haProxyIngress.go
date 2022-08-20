@@ -15,7 +15,7 @@ import (
 
 func IngressConsole(s *scalablev1alpha1.SolaceScalable) *v1.Ingress {
 	labels := labels(s)
-	icn := "haproxy"
+	icn := "haproxy-pub"
 	annotations := map[string]string{
 		"ingress.kubernetes.io/add-base-url": "true",
 	}

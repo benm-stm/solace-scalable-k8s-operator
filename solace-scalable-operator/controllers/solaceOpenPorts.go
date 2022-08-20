@@ -2,8 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
 
 	scalablev1alpha1 "solace.io/api/v1alpha1"
 )
@@ -53,49 +51,55 @@ type solaceMergedResps struct {
 
 //*****************************************************
 
-func getSolaceOpenPorts(s *scalablev1alpha1.SolaceScalable) []int32 {
+func getSolaceOpenPorts(s *scalablev1alpha1.SolaceScalable) ([]int32, error) {
 	var ports []int32
-	bodyText := callSolaceSempApi(s, "/config/msgVpns")
+	bodyText, err := CallSolaceSempApi(s, "/config/msgVpns")
+	if err != nil {
+		return nil, err
+	}
 	ports = unique(cleanJsonResponse(bodyText, ".*Port\":(.*),"))
-	//fmt.Print(ports)
-	os.Exit(0)
-	return ports
+	return ports, nil
 }
 
-func getEnabledSolaceMsgVpns(s *scalablev1alpha1.SolaceScalable) solaceMsgVpnsResp {
-	text := callSolaceSempApi(s, "/config/msgVpns?select=msgVpnName,enabled,*Port&where=enabled==true")
-
+func getEnabledSolaceMsgVpns(s *scalablev1alpha1.SolaceScalable) (solaceMsgVpnsResp, error) {
+	text, err := CallSolaceSempApi(s, "/config/msgVpns?select=msgVpnName,enabled,*Port&where=enabled==true")
+	if err != nil {
+		return solaceMsgVpnsResp{}, err
+	}
 	textBytes := []byte(text)
 
 	resp := solaceMsgVpnsResp{}
-	err := json.Unmarshal(textBytes, &resp)
+	err = json.Unmarshal(textBytes, &resp)
 	if err != nil {
-		fmt.Println(err)
+		return solaceMsgVpnsResp{}, err
 	}
-	return resp
+	return resp, nil
 }
 
-func getSolaceClientUsernames(s *scalablev1alpha1.SolaceScalable, r solaceMsgVpnsResp) solaceClientUsernamesResp {
+func getSolaceClientUsernames(s *scalablev1alpha1.SolaceScalable, r solaceMsgVpnsResp) (solaceClientUsernamesResp, error) {
 	temp := solaceClientUsernamesResp{}
 	resp := solaceClientUsernamesResp{}
 	for i := 0; i < len(r.Data); i++ {
 		//ignore #client-username
-		text := callSolaceSempApi(s, "/config/msgVpns/"+r.Data[i].MsgVpnName+"/clientUsernames?select=clientUsername,enabled,msgVpnName&where=clientUsername!=*client-username")
-		textBytes := []byte(text)
-		err := json.Unmarshal(textBytes, &temp)
+		text, err := CallSolaceSempApi(s, "/config/msgVpns/"+r.Data[i].MsgVpnName+"/clientUsernames?select=clientUsername,enabled,msgVpnName&where=clientUsername!=*client-username")
 		if err != nil {
-			fmt.Println(err)
+			return solaceClientUsernamesResp{}, err
+		}
+		textBytes := []byte(text)
+		err = json.Unmarshal(textBytes, &temp)
+		if err != nil {
+			return solaceClientUsernamesResp{}, err
 		}
 
 		resp.Data = append(resp.Data, temp.Data...)
 	}
-	return resp
+	return resp, nil
 }
 
 func mergeSolaceResponses(m solaceMsgVpnsResp, c solaceClientUsernamesResp) solaceMergedResps {
 	resp := solaceMergedResps{}
 	res := solaceMergedResp{}
-	//k := 0
+
 	for i := 0; i < len(m.Data); i++ {
 		for j := 0; j < len(c.Data); j++ {
 			// remove element if clientusername is disabled
@@ -115,11 +119,6 @@ func mergeSolaceResponses(m solaceMsgVpnsResp, c solaceClientUsernamesResp) sola
 				res.Ports = append(res.Ports, int32(m.Data[i].ServiceRestIncomingTlsListenPort))
 				resp.Data = append(resp.Data, res)
 			}
-			/*} else {
-				//remove element
-				resp.Data = append(resp.Data[:j], resp.Data[j+1:]...)
-			}*/
-
 		}
 	}
 	return resp

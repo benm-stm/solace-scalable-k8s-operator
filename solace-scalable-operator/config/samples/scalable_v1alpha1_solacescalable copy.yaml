@@ -16,13 +16,8 @@ spec:
       value: admin
   pvClass: localManual
   haproxy:
-    serviceName: haproxy-kubernetes-ingress
-    namespace: default
-  #haproxy:
-  #  publish:
-  #    serviceName: haproxy-kubernetes-ingress
-  #    namespace: default
-  #  subscribe:
-  #    serviceName: haproxy-kubernetes-ingress
-  #    namespace: default
-
+    namespace: ingress
+    publish:
+      serviceName: haproxy-pub-kubernetes-ingress
+    subscribe:
+      serviceName: haproxy-sub-kubernetes-ingress
