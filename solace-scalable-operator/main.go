@@ -31,8 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	scalablev1alpha1 "solace.io/api/v1alpha1"
-	"solace.io/controllers"
+	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
+	"github.com/benm-stm/solace-scalable-k8s-operator/controllers"
 	//+kubebuilder:scaffold:imports
 )
 

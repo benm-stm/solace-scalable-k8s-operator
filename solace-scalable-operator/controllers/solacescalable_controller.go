@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -29,8 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	scalablev1alpha1 "solace.io/api/v1alpha1"
 )
 
 // SolaceScalableReconciler reconciles a SolaceScalable object
@@ -75,7 +74,7 @@ func (r *SolaceScalableReconciler) Reconcile(ctx context.Context, request ctrl.R
 	}
 
 	// TODO: Solace statefulset creation
-	ss := Statefulset(solaceScalable)
+	ss := Statefulset(solaceScalable, Labels(solaceScalable))
 	if err := controllerutil.SetControllerReference(solaceScalable, ss, r.Scheme); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -98,7 +97,7 @@ func (r *SolaceScalableReconciler) Reconcile(ctx context.Context, request ctrl.R
 		}
 
 		// create solace instances PV
-		if err := createSolaceLocalPv(solaceScalable, i, r, ctx); err != nil {
+		if err := CreateSolaceLocalPv(solaceScalable, i, r, ctx); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -111,18 +110,18 @@ func (r *SolaceScalableReconciler) Reconcile(ctx context.Context, request ctrl.R
 		return reconcile.Result{}, err
 	}
 
-	if _, err := CallSolaceSempApi(solaceScalable, "/monitor/about/api"); err == nil {
+	if _, success, _ := CallSolaceSempApi(solaceScalable, "/monitor/about/api", ctx); success == true {
 		// get open svc pub/sub ports
-		enabledMsgVpns, err := getEnabledSolaceMsgVpns(solaceScalable)
+		enabledMsgVpns, err := GetEnabledSolaceMsgVpns(solaceScalable, ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		solaceClientUsernames, err := getSolaceClientUsernames(solaceScalable, enabledMsgVpns)
+		solaceClientUsernames, err := GetSolaceClientUsernames(solaceScalable, enabledMsgVpns, ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 
-		pubSubOpenPorts := mergeSolaceResponses(enabledMsgVpns, solaceClientUsernames).Data
+		pubSubOpenPorts := MergeSolaceResponses(enabledMsgVpns, solaceClientUsernames).Data
 
 		pubSvcNames, dataPub, err := CreatePubSubSvc(solaceScalable, &pubSubOpenPorts, &enabledMsgVpns, "pub", r, ctx)
 		if err != nil {
@@ -159,19 +158,19 @@ func (r *SolaceScalableReconciler) Reconcile(ctx context.Context, request ctrl.R
 		}
 
 		// create and update haproxy pub configmap
-		configMapPub, FoundHaproxyConfigMap, err := CreateTcpIngressConfigmap(dataPub, "pub", solaceScalable, r, ctx)
+		configMapPub, FoundHaproxyConfigMap, err := CreateSolaceTcpConfigmap(dataPub, "pub", solaceScalable, r, ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		if err := UpdateTcpIngressConfigmap(FoundHaproxyConfigMap, configMapPub, solaceScalable, r, ctx); err != nil {
+		if err := UpdateSolaceTcpConfigmap(FoundHaproxyConfigMap, configMapPub, solaceScalable, r, ctx, &hashStore); err != nil {
 			return reconcile.Result{}, err
 		}
 		// create and update haproxy pub configmap
-		configMapSub, FoundHaproxyConfigMap, err := CreateTcpIngressConfigmap(dataSub, "sub", solaceScalable, r, ctx)
+		configMapSub, FoundHaproxyConfigMap, err := CreateSolaceTcpConfigmap(dataSub, "sub", solaceScalable, r, ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		if err := UpdateTcpIngressConfigmap(FoundHaproxyConfigMap, configMapSub, solaceScalable, r, ctx); err != nil {
+		if err := UpdateSolaceTcpConfigmap(FoundHaproxyConfigMap, configMapSub, solaceScalable, r, ctx, &hashStore); err != nil {
 			return reconcile.Result{}, err
 		}
 

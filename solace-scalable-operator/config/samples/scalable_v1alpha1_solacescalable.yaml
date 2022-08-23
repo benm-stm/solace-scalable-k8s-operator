@@ -1,0 +1,23 @@
+apiVersion: scalable.solace.io/v1alpha1
+kind: SolaceScalable
+metadata:
+  name: solacescalable
+  namespace: solacescalable
+spec:
+  replicas: 3
+  clusterUrl: scalable.dev.gcp.digital-backbone.io
+  container:
+    name: solace
+    image: solace/solace-pubsub-standard:latest
+    env:
+    - name: username_admin_password
+      value: admin
+    - name: username_admin_globalaccesslevel
+      value: admin
+  pvClass: localManual
+  haproxy:
+    namespace: ingress-controller
+    publish:
+      serviceName: haproxy-pub-kubernetes-ingress
+    subscribe:
+      serviceName: haproxy-sub-kubernetes-ingress

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"io/ioutil"
@@ -8,18 +9,19 @@ import (
 	"regexp"
 	"strconv"
 
+	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	scalablev1alpha1 "solace.io/api/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func labels(s *scalablev1alpha1.SolaceScalable) map[string]string {
+func Labels(s *scalablev1alpha1.SolaceScalable) map[string]string {
 	// Fetches and sets labels
 	return map[string]string{
 		"app": s.Name,
 	}
 }
 
-func stringInSlice(a string, list []string) bool {
+func StringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
 			return true
@@ -28,14 +30,14 @@ func stringInSlice(a string, list []string) bool {
 	return false
 }
 
-func asSha256(o interface{}) string {
+func AsSha256(o interface{}) string {
 	h := sha256.New()
 	h.Write([]byte(fmt.Sprintf("%v", o)))
 
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func unique(intSlice []int32) []int32 {
+func Unique(intSlice []int32) []int32 {
 	keys := make(map[int32]bool)
 	list := []int32{}
 	for _, entry := range intSlice {
@@ -49,7 +51,7 @@ func unique(intSlice []int32) []int32 {
 	return list
 }
 
-func getEnv(s *scalablev1alpha1.SolaceScalable, selector string) string {
+func GetEnv(s *scalablev1alpha1.SolaceScalable, selector string) string {
 	for e := 0; e < int(len(s.Spec.Container.Env)); e++ {
 		if s.Spec.Container.Env[e].Name == selector {
 			return s.Spec.Container.Env[e].Value
@@ -58,12 +60,12 @@ func getEnv(s *scalablev1alpha1.SolaceScalable, selector string) string {
 	return ""
 }
 
-func cleanJsonResponse(s string, r string) []int32 {
+func CleanJsonResponse(s string, r string) []int32 {
 	var ret []int32
 	re, _ := regexp.Compile(r)
 	submatchall := re.FindAllStringSubmatch(s, -1)
-	for i := 0; i < len(submatchall); i++ {
-		x, err := strconv.ParseInt(submatchall[i][1], 10, 32)
+	for _, s := range submatchall {
+		x, err := strconv.ParseInt(s[1], 10, 32)
 		if err != nil {
 			panic(err)
 		} else if x != 0 {
@@ -73,31 +75,37 @@ func cleanJsonResponse(s string, r string) []int32 {
 	return ret
 }
 
-func CallSolaceSempApi(s *scalablev1alpha1.SolaceScalable, apiPath string) (string, error) {
+func CallSolaceSempApi(s *scalablev1alpha1.SolaceScalable, apiPath string, ctx context.Context) (string, bool, error) {
+	log := log.FromContext(ctx)
+	var retErr error
 	for i := 0; i < int(s.Spec.Replicas); i++ {
 		url := "n" + strconv.Itoa(i) + "." + s.Spec.ClusterUrl
 
 		client := &http.Client{}
 		req, err := http.NewRequest("GET", "http://"+url+"/SEMP/v2"+apiPath, nil)
 		if err != nil {
-			return "", err
+			retErr = err
 		}
-		req.SetBasicAuth("admin", getEnv(s, "username_admin_password"))
+		req.SetBasicAuth("admin", GetEnv(s, "username_admin_password"))
 		resp, err := client.Do(req)
 		if err != nil {
-			return "", err
+			retErr = err
 		}
 		bodyText, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return "", err
+			retErr = err
 		}
-		return string(bodyText), nil
+		if resp.StatusCode == 200 {
+			return string(bodyText), true, nil
+		} else {
+			log.Info("solace Url unreachable " + url)
+		}
 	}
-	fmt.Println("retrned emptyyyyyyyyyyyyy")
-	return "", nil
+	log.Error(retErr, "All solace Urls are unreachable ")
+	return "", false, retErr
 }
 
-func contains(s []string, str string) bool {
+func Contains(s []string, str string) bool {
 	for _, v := range s {
 		if v == str {
 			return true
@@ -130,11 +138,11 @@ func portsRange(s string) []corev1.ContainerPort {
 	return ports
 }*/
 
-func envVars(s *scalablev1alpha1.SolaceScalableSpec) []corev1.EnvVar {
+func EnvVars(s *scalablev1alpha1.SolaceScalableSpec) []corev1.EnvVar {
 	var env []corev1.EnvVar
 
-	for i := 0; i < len(s.Container.Env); i++ {
-		env = append(env, corev1.EnvVar{Name: s.Container.Env[i].Name, Value: s.Container.Env[i].Value})
+	for _, s := range s.Container.Env {
+		env = append(env, corev1.EnvVar{Name: s.Name, Value: s.Value})
 	}
 	return env
 }
