@@ -62,12 +62,38 @@ func Statefulset(s *scalablev1alpha1.SolaceScalable, labels map[string]string) *
 							Image: s.Spec.Container.Image,
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "storage",
-									MountPath: "/opt/stoage",
-								},
-								{
 									Name:      "dshm",
 									MountPath: "/dev/shm",
+								},
+								{
+									Name:      "storage",
+									MountPath: "/usr/sw/internalSpool/softAdb",
+									SubPath:   "softAdb",
+								},
+								{
+									Name:      "storage",
+									MountPath: "/usr/sw/adb",
+									SubPath:   "adb",
+								},
+								{
+									Name:      "storage",
+									MountPath: "/usr/sw/var",
+									SubPath:   "var",
+								},
+								{
+									Name:      "storage",
+									MountPath: "/usr/sw/internalSpool",
+									SubPath:   "internalSpool",
+								},
+								{
+									Name:      "storage",
+									MountPath: "/var/lib/solace/diagnostics",
+									SubPath:   "diagnostics",
+								},
+								{
+									Name:      "storage",
+									MountPath: "/usr/sw/jail",
+									SubPath:   "jail",
 								},
 							},
 							Env: EnvVars(&s.Spec),
@@ -79,6 +105,14 @@ func Statefulset(s *scalablev1alpha1.SolaceScalable, labels map[string]string) *
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{
 									Medium: "Memory",
+								},
+							},
+						},
+						{
+							Name: "storage",
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: "storage",
 								},
 							},
 						},

@@ -197,6 +197,7 @@ func (r *SolaceScalableReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&scalablev1alpha1.SolaceScalable{}).
 		Owns(&v1.StatefulSet{}).
 		Owns(&corev1.Service{}).
-		Owns(&corev1.Service{}).
+		Owns(&corev1.ConfigMap{}).
+		Owns(&corev1.PersistentVolume{}).
 		Complete(r)
 }
