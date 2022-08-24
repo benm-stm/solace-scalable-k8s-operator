@@ -35,7 +35,7 @@ func SvcConsole(s *scalablev1alpha1.SolaceScalable, counter int) *corev1.Service
 }
 
 //create console service
-func CreateSolaceConsoleSvc(svc *corev1.Service, r *SolaceScalableReconciler, ctx context.Context) error {
+func (r *SolaceScalableReconciler) CreateSolaceConsoleSvc(svc *corev1.Service, ctx context.Context) error {
 	// Check if the console svc already exists
 	log := log.FromContext(ctx)
 	foundSvc := &corev1.Service{}
@@ -49,7 +49,10 @@ func CreateSolaceConsoleSvc(svc *corev1.Service, r *SolaceScalableReconciler, ct
 }
 
 //delete unused console services
-func DeleteSolaceConsoleSvc(solaceScalable *scalablev1alpha1.SolaceScalable, r *SolaceScalableReconciler, ctx context.Context) error {
+func (r *SolaceScalableReconciler) DeleteSolaceConsoleSvc(
+	solaceScalable *scalablev1alpha1.SolaceScalable,
+	ctx context.Context,
+) error {
 	log := log.FromContext(ctx)
 	i := int(solaceScalable.Spec.Replicas)
 	// loop indefinitely until not finding an existi_ng console service

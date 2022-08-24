@@ -21,12 +21,10 @@ type SolaceMsgVpnResp struct {
 	ServiceRestIncomingPlainTextListenPort int    `json:"serviceRestIncomingPlainTextListenPort"`
 	ServiceRestIncomingTlsListenPort       int    `json:"serviceRestIncomingTlsListenPort"`
 }
-
 type SolaceMsgVpnsResp struct {
 	Data []SolaceMsgVpnResp `json:"data"`
 }
 
-//******************************************************
 //clientUsernames response struct
 type SolaceClientUsernameResp struct {
 	ClientUsername string  `json:"clientUsername"`
@@ -34,12 +32,10 @@ type SolaceClientUsernameResp struct {
 	MsgVpnName     string  `json:"msgVpnName"`
 	Ports          []int32 `json:"ports"`
 }
-
 type SolaceClientUsernamesResp struct {
 	Data []SolaceClientUsernameResp `json:"data"`
 }
 
-//******************************************************
 //merged datas
 type SolaceMergedResp struct {
 	MsgVpnName     string  `json:"msgVpnName"`
@@ -49,8 +45,6 @@ type SolaceMergedResp struct {
 type SolaceMergedResps struct {
 	Data []SolaceMergedResp `json:"data"`
 }
-
-//*****************************************************
 
 func GetSolaceOpenPorts(s *scalablev1alpha1.SolaceScalable, ctx context.Context) ([]int32, error) {
 	var ports []int32
@@ -62,8 +56,17 @@ func GetSolaceOpenPorts(s *scalablev1alpha1.SolaceScalable, ctx context.Context)
 	return ports, nil
 }
 
-func GetEnabledSolaceMsgVpns(s *scalablev1alpha1.SolaceScalable, ctx context.Context) (SolaceMsgVpnsResp, error) {
-	text, _, err := CallSolaceSempApi(s, "/config/msgVpns?select=msgVpnName,enabled,*Port&where=enabled==true", ctx)
+func GetEnabledSolaceMsgVpns(
+	s *scalablev1alpha1.SolaceScalable,
+	ctx context.Context,
+) (SolaceMsgVpnsResp, error) {
+	text, _, err := CallSolaceSempApi(
+		s,
+		"/config/msgVpns?select="+
+			"msgVpnName,enabled,*Port"+
+			"&where=enabled==true",
+		ctx,
+	)
 	if err != nil {
 		return SolaceMsgVpnsResp{}, err
 	}
@@ -77,12 +80,21 @@ func GetEnabledSolaceMsgVpns(s *scalablev1alpha1.SolaceScalable, ctx context.Con
 	return resp, nil
 }
 
-func GetSolaceClientUsernames(s *scalablev1alpha1.SolaceScalable, r SolaceMsgVpnsResp, ctx context.Context) (SolaceClientUsernamesResp, error) {
+func (m *SolaceMsgVpnsResp) GetSolaceClientUsernames(
+	s *scalablev1alpha1.SolaceScalable,
+	ctx context.Context,
+) (SolaceClientUsernamesResp, error) {
 	temp := SolaceClientUsernamesResp{}
 	resp := SolaceClientUsernamesResp{}
-	for _, r := range r.Data {
+	for _, m := range m.Data {
 		//ignore #client-username
-		text, _, err := CallSolaceSempApi(s, "/config/msgVpns/"+r.MsgVpnName+"/clientUsernames?select=clientUsername,enabled,msgVpnName&where=clientUsername!=*client-username", ctx)
+		text, _, err := CallSolaceSempApi(
+			s, "/config/msgVpns/"+m.MsgVpnName+
+				"/clientUsernames?select="+
+				"clientUsername,enabled,msgVpnName"+
+				"&where=clientUsername!=*client-username",
+			ctx,
+		)
 		if err != nil {
 			return SolaceClientUsernamesResp{}, err
 		}
@@ -97,7 +109,7 @@ func GetSolaceClientUsernames(s *scalablev1alpha1.SolaceScalable, r SolaceMsgVpn
 	return resp, nil
 }
 
-func MergeSolaceResponses(m SolaceMsgVpnsResp, c SolaceClientUsernamesResp) SolaceMergedResps {
+func (c *SolaceClientUsernamesResp) MergeSolaceResponses(m SolaceMsgVpnsResp) SolaceMergedResps {
 	resp := SolaceMergedResps{}
 	res := SolaceMergedResp{}
 

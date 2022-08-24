@@ -120,7 +120,10 @@ func Statefulset(s *scalablev1alpha1.SolaceScalable, labels map[string]string) *
 }
 
 // Check if the statefulset already exists
-func CreateStatefulSet(ss *v1.StatefulSet, r *SolaceScalableReconciler, ctx context.Context) (*v1.StatefulSet, error) {
+func (r *SolaceScalableReconciler) CreateStatefulSet(
+	ss *v1.StatefulSet,
+	ctx context.Context,
+) (*v1.StatefulSet, error) {
 	log := log.FromContext(ctx)
 	foundSs := &v1.StatefulSet{}
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: ss.Name, Namespace: ss.Namespace}, foundSs); err != nil {
@@ -133,7 +136,12 @@ func CreateStatefulSet(ss *v1.StatefulSet, r *SolaceScalableReconciler, ctx cont
 }
 
 // Update the found object and write the result back if there are any changes
-func UpdateStatefulSet(ss *v1.StatefulSet, foundSs *v1.StatefulSet, r *SolaceScalableReconciler, ctx context.Context, hashStore *map[string]string) error {
+func (r *SolaceScalableReconciler) UpdateStatefulSet(
+	ss *v1.StatefulSet,
+	foundSs *v1.StatefulSet,
+	ctx context.Context,
+	hashStore *map[string]string,
+) error {
 	log := log.FromContext(ctx)
 	newMarshal, _ := json.Marshal(foundSs.Spec)
 	if len(*hashStore) == 0 {

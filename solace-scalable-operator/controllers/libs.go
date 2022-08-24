@@ -41,8 +41,6 @@ func Unique(intSlice []int32) []int32 {
 	keys := make(map[int32]bool)
 	list := []int32{}
 	for _, entry := range intSlice {
-		//if _, value := keys[entry]; !value {
-		// remove 0
 		if _, value := keys[entry]; !value && entry == 0 {
 			keys[entry] = true
 			list = append(list, entry)
@@ -75,7 +73,11 @@ func CleanJsonResponse(s string, r string) []int32 {
 	return ret
 }
 
-func CallSolaceSempApi(s *scalablev1alpha1.SolaceScalable, apiPath string, ctx context.Context) (string, bool, error) {
+func CallSolaceSempApi(
+	s *scalablev1alpha1.SolaceScalable,
+	apiPath string,
+	ctx context.Context,
+) (string, bool, error) {
 	log := log.FromContext(ctx)
 	var retErr error
 	for i := 0; i < int(s.Spec.Replicas); i++ {
@@ -114,29 +116,6 @@ func Contains(s []string, str string) bool {
 
 	return false
 }
-
-/*
-func portsRange(s string) []corev1.ContainerPort {
-	var ports []corev1.ContainerPort
-	// append default ones
-	ports = append(ports, corev1.ContainerPort{ContainerPort: 8080})
-	ports = append(ports, corev1.ContainerPort{ContainerPort: 55555})
-	if len(s) > 0 {
-		split := strings.Split(s, "-")
-		portOne, err := strconv.ParseInt(split[0], 10, 32)
-		if err != nil {
-			panic(err)
-		}
-		portTwo, err := strconv.ParseInt(split[1], 10, 32)
-		if err != nil {
-			panic(err)
-		}
-		for i := portOne; i <= portTwo; i++ {
-			ports = append(ports, corev1.ContainerPort{ContainerPort: int32(i)})
-		}
-	}
-	return ports
-}*/
 
 func EnvVars(s *scalablev1alpha1.SolaceScalableSpec) []corev1.EnvVar {
 	var env []corev1.EnvVar

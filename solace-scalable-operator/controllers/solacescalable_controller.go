@@ -78,11 +78,11 @@ func (r *SolaceScalableReconciler) Reconcile(ctx context.Context, request ctrl.R
 	if err := controllerutil.SetControllerReference(solaceScalable, ss, r.Scheme); err != nil {
 		return reconcile.Result{}, err
 	}
-	foundSs, err := CreateStatefulSet(ss, r, ctx)
+	foundSs, err := r.CreateStatefulSet(ss, ctx)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	if err := UpdateStatefulSet(ss, foundSs, r, ctx, &hashStore); err != nil {
+	if err := r.UpdateStatefulSet(ss, foundSs, ctx, &hashStore); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -92,85 +92,84 @@ func (r *SolaceScalableReconciler) Reconcile(ctx context.Context, request ctrl.R
 		if err := controllerutil.SetControllerReference(solaceScalable, svc, r.Scheme); err != nil {
 			return reconcile.Result{}, err
 		}
-		if err := CreateSolaceConsoleSvc(svc, r, ctx); err != nil {
+		if err := r.CreateSolaceConsoleSvc(svc, ctx); err != nil {
 			return reconcile.Result{}, err
 		}
 
 		// create solace instances PV
-		if err := CreateSolaceLocalPv(solaceScalable, i, r, ctx); err != nil {
+		if err := r.CreateSolaceLocalPv(solaceScalable, i, ctx); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
 
-	if err := DeleteSolaceConsoleSvc(solaceScalable, r, ctx); err != nil {
+	if err := r.DeleteSolaceConsoleSvc(solaceScalable, ctx); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	if err := CreateSolaceConsoleIngress(solaceScalable, r, ctx); err != nil {
+	if err := r.CreateSolaceConsoleIngress(solaceScalable, ctx); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	if _, success, _ := CallSolaceSempApi(solaceScalable, "/monitor/about/api", ctx); success == true {
 		// get open svc pub/sub ports
-		enabledMsgVpns, err := GetEnabledSolaceMsgVpns(solaceScalable, ctx)
+		m, err := GetEnabledSolaceMsgVpns(solaceScalable, ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		solaceClientUsernames, err := GetSolaceClientUsernames(solaceScalable, enabledMsgVpns, ctx)
+		c, err := m.GetSolaceClientUsernames(solaceScalable, ctx)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		pubSubOpenPorts := c.MergeSolaceResponses(m).Data
+
+		pubSvcNames, dataPub, err := r.CreatePubSubSvc(solaceScalable, &pubSubOpenPorts, &m, "pub", ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 
-		pubSubOpenPorts := MergeSolaceResponses(enabledMsgVpns, solaceClientUsernames).Data
-
-		pubSvcNames, dataPub, err := CreatePubSubSvc(solaceScalable, &pubSubOpenPorts, &enabledMsgVpns, "pub", r, ctx)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		subSvcNames, dataSub, err := CreatePubSubSvc(solaceScalable, &pubSubOpenPorts, &enabledMsgVpns, "sub", r, ctx)
+		subSvcNames, dataSub, err := r.CreatePubSubSvc(solaceScalable, &pubSubOpenPorts, &m, "sub", ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 
 		// check HAProxy pub service
-		FoundHaproxyPubSvc, err := GetExistingHaProxySvc(solaceScalable, solaceScalable.Spec.Haproxy.Publish.ServiceName, r, ctx)
+		FoundHaproxyPubSvc, err := r.GetExistingHaProxySvc(solaceScalable, solaceScalable.Spec.Haproxy.Publish.ServiceName, ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 		//set the new pub data in the found svc
 		FoundHaproxyPubSvc.Spec.Ports = *SvcHaproxy(solaceScalable, FoundHaproxyPubSvc.Spec.Ports, *dataPub)
 
-		if err := UpdateHAProxySvc(&hashStore, FoundHaproxyPubSvc, r, ctx); err != nil {
+		if err := r.UpdateHAProxySvc(&hashStore, FoundHaproxyPubSvc, ctx); err != nil {
 			return reconcile.Result{}, err
 		}
 
 		// check HAProxy pub service
-		FoundHaproxySubSvc, err := GetExistingHaProxySvc(solaceScalable, solaceScalable.Spec.Haproxy.Subscribe.ServiceName, r, ctx)
+		FoundHaproxySubSvc, err := r.GetExistingHaProxySvc(solaceScalable, solaceScalable.Spec.Haproxy.Subscribe.ServiceName, ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 		//set the new sub data in the found svc
 		FoundHaproxySubSvc.Spec.Ports = *SvcHaproxy(solaceScalable, FoundHaproxySubSvc.Spec.Ports, *dataSub)
 
-		if err := UpdateHAProxySvc(&hashStore, FoundHaproxySubSvc, r, ctx); err != nil {
+		if err := r.UpdateHAProxySvc(&hashStore, FoundHaproxySubSvc, ctx); err != nil {
 			return reconcile.Result{}, err
 		}
 
 		// create and update haproxy pub configmap
-		configMapPub, FoundHaproxyConfigMap, err := CreateSolaceTcpConfigmap(dataPub, "pub", solaceScalable, r, ctx)
+		configMapPub, FoundHaproxyConfigMap, err := r.CreateSolaceTcpConfigmap(dataPub, "pub", solaceScalable, ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		if err := UpdateSolaceTcpConfigmap(FoundHaproxyConfigMap, configMapPub, solaceScalable, r, ctx, &hashStore); err != nil {
+		if err := r.UpdateSolaceTcpConfigmap(FoundHaproxyConfigMap, configMapPub, solaceScalable, ctx, &hashStore); err != nil {
 			return reconcile.Result{}, err
 		}
 		// create and update haproxy pub configmap
-		configMapSub, FoundHaproxyConfigMap, err := CreateSolaceTcpConfigmap(dataSub, "sub", solaceScalable, r, ctx)
+		configMapSub, FoundHaproxyConfigMap, err := r.CreateSolaceTcpConfigmap(dataSub, "sub", solaceScalable, ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		if err := UpdateSolaceTcpConfigmap(FoundHaproxyConfigMap, configMapSub, solaceScalable, r, ctx, &hashStore); err != nil {
+		if err := r.UpdateSolaceTcpConfigmap(FoundHaproxyConfigMap, configMapSub, solaceScalable, ctx, &hashStore); err != nil {
 			return reconcile.Result{}, err
 		}
 
@@ -198,6 +197,6 @@ func (r *SolaceScalableReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&scalablev1alpha1.SolaceScalable{}).
 		Owns(&v1.StatefulSet{}).
 		Owns(&corev1.Service{}).
-		//WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
+		Owns(&corev1.Service{}).
 		Complete(r)
 }

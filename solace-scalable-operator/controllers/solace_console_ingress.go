@@ -7,14 +7,15 @@ import (
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 	netv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func IngressConsole(s *scalablev1alpha1.SolaceScalable, labels map[string]string) *v1.Ingress {
-	//labels := labels(s)
+func IngressConsole(
+	s *scalablev1alpha1.SolaceScalable,
+	labels map[string]string,
+) *v1.Ingress {
 	icn := "haproxy-sub"
 	annotations := map[string]string{
 		"ingress.kubernetes.io/add-base-url": "true",
@@ -65,14 +66,17 @@ func CreateIngressConsoleRules(s *scalablev1alpha1.SolaceScalable) []v1.IngressR
 	return rules
 }
 
-func CreateSolaceConsoleIngress(solaceScalable *scalablev1alpha1.SolaceScalable, r *SolaceScalableReconciler, ctx context.Context) error {
+func (r *SolaceScalableReconciler) CreateSolaceConsoleIngress(
+	solaceScalable *scalablev1alpha1.SolaceScalable,
+	ctx context.Context,
+) error {
 	//create ingress console services
 	log := log.FromContext(ctx)
 	foundIngress := &netv1.Ingress{}
 	ingConsole := IngressConsole(solaceScalable, Labels(solaceScalable))
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: ingConsole.Name, Namespace: ingConsole.Namespace}, foundIngress); err != nil && errors.IsNotFound(err) {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: ingConsole.Name, Namespace: ingConsole.Namespace}, foundIngress); err != nil {
 		log.Info("Creating Solace Console Ingress", ingConsole.Namespace, ingConsole.Name)
-		if err = r.Create(context.TODO(), ingConsole); err != nil && errors.IsNotFound(err) {
+		if err = r.Create(context.TODO(), ingConsole); err != nil {
 			return err
 		}
 	}

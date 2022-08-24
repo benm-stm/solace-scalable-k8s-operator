@@ -6,7 +6,6 @@ import (
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -22,7 +21,10 @@ func SvcPubSub(s *scalablev1alpha1.SolaceScalable,
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      m.MsgVpnName + "-" + m.ClientUsername + "-" + strconv.FormatInt(int64(p), 10) + "-" + pubSub,
+			Name: m.MsgVpnName + "-" +
+				m.ClientUsername + "-" +
+				strconv.FormatInt(int64(p), 10) + "-" +
+				pubSub,
 			Namespace: s.Namespace,
 		},
 		Spec: corev1.ServiceSpec{
@@ -37,11 +39,10 @@ func SvcPubSub(s *scalablev1alpha1.SolaceScalable,
 }
 
 // pubsub SVC creation
-func CreatePubSubSvc(s *scalablev1alpha1.SolaceScalable,
+func (r *SolaceScalableReconciler) CreatePubSubSvc(s *scalablev1alpha1.SolaceScalable,
 	pubSubOpenPorts *[]SolaceMergedResp,
 	enabledMsgVpns *SolaceMsgVpnsResp,
 	nature string,
-	r *SolaceScalableReconciler,
 	ctx context.Context,
 ) (*[]string, *map[string]string, error) {
 	log := log.FromContext(ctx)
@@ -51,16 +52,34 @@ func CreatePubSubSvc(s *scalablev1alpha1.SolaceScalable,
 		for _, j := range i.Ports {
 			if j != 0 {
 				//create pubsub SVC
-				pubSubSvcNames = append(pubSubSvcNames, i.MsgVpnName+"-"+i.ClientUsername+"-"+strconv.FormatInt(int64(j), 10)+"-"+nature)
+				pubSubSvcNames = append(
+					pubSubSvcNames,
+					i.MsgVpnName+"-"+
+						i.ClientUsername+"-"+
+						strconv.FormatInt(int64(j), 10)+"-"+
+						nature,
+				)
 				pbs := SvcPubSub(s, i, j, nature, Labels(s))
 				foundPubSubSvc := &corev1.Service{}
-				if err := r.Get(context.TODO(), types.NamespacedName{Name: pbs.Name, Namespace: pbs.Namespace}, foundPubSubSvc); err != nil {
+				if err := r.Get(
+					context.TODO(),
+					types.NamespacedName{
+						Name:      pbs.Name,
+						Namespace: pbs.Namespace,
+					},
+					foundPubSubSvc,
+				); err != nil {
 					log.Info("Creating pubSub SVC", pbs.Namespace, pbs.Name)
 					if err = r.Create(context.TODO(), pbs); err != nil {
 						return nil, nil, err
 					}
 				}
-				data[strconv.Itoa(int(j))] = s.Namespace + "/" + i.MsgVpnName + "-" + i.ClientUsername + "-" + strconv.Itoa(int(j)) + "-" + nature + ":" + strconv.Itoa(int(j))
+				data[strconv.Itoa(int(j))] = s.Namespace + "/" +
+					i.MsgVpnName + "-" +
+					i.ClientUsername + "-" +
+					strconv.Itoa(int(j)) + "-" +
+					nature + ":" +
+					strconv.Itoa(int(j))
 			}
 		}
 	}
@@ -73,7 +92,7 @@ func ListPubSubSvc(solaceScalable *scalablev1alpha1.SolaceScalable, r *SolaceSca
 	svcList := &corev1.ServiceList{}
 	listOptions := &client.ListOptions{Namespace: solaceScalable.Namespace}
 
-	if err := r.List(context.TODO(), svcList, listOptions); err != nil && errors.IsNotFound(err) {
+	if err := r.List(context.TODO(), svcList, listOptions); err != nil {
 		return nil, nil, err
 	}
 	return svcList, foundExtraPubSubSvc, nil

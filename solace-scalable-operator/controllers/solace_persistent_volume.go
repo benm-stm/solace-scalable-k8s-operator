@@ -38,7 +38,11 @@ func PersistentVolume(s *scalablev1alpha1.SolaceScalable,
 	}
 }
 
-func CreateSolaceLocalPv(s *scalablev1alpha1.SolaceScalable, instanceId int, r *SolaceScalableReconciler, ctx context.Context) error {
+func (r *SolaceScalableReconciler) CreateSolaceLocalPv(
+	s *scalablev1alpha1.SolaceScalable,
+	instanceId int,
+	ctx context.Context,
+) error {
 	// create pvs if pvClass is localManual
 	if s.Spec.PvClass == "localManual" {
 		log := log.FromContext(ctx)
