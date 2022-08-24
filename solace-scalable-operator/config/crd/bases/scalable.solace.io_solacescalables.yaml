@@ -41,7 +41,6 @@ spec:
                   to remove/update
                 properties:
                   env:
-                    description: PortsRange string `json:"portsRange,omitempty"`
                     items:
                       properties:
                         name:
@@ -51,13 +50,20 @@ spec:
                       type: object
                     type: array
                   image:
-                    description: standard docker command docker run -d -p 8080:8080
-                      -p 55555:55555 --shm-size=1g --env username_admin_globalaccesslevel=admin
-                      --env username_admin_password=admin --name=solace --mount type=bind,source=/mnt/solace,destination=/var/lib/solace,ro=false
-                      solace/solace-pubsub-standard
                     type: string
                   name:
                     type: string
+                  volume:
+                    properties:
+                      hostPath:
+                        type: string
+                      name:
+                        type: string
+                      reclaimPolicy:
+                        type: string
+                      size:
+                        type: string
+                    type: object
                 type: object
               haproxy:
                 properties:

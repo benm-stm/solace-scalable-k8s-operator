@@ -9,6 +9,10 @@ spec:
   container:
     name: solace
     image: solace/solace-pubsub-standard:latest
+    volume:
+      name: storage
+      size: 50Gi
+      hostPath: /opt/storage
     env:
     - name: username_admin_password
       value: admin

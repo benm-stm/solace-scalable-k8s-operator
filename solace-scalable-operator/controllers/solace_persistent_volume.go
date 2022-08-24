@@ -27,13 +27,13 @@ func PersistentVolume(s *scalablev1alpha1.SolaceScalable,
 		},
 		Spec: corev1.PersistentVolumeSpec{
 			Capacity: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceName("storage"): resource.MustParse("50Gi"),
+				corev1.ResourceName(s.Spec.Container.Volume.Name): resource.MustParse(s.Spec.Container.Volume.Size),
 			},
 			PersistentVolumeSource: corev1.PersistentVolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{Path: "/opt/storage", Type: &hostPathType},
+				HostPath: &corev1.HostPathVolumeSource{Path: s.Spec.Container.Volume.HostPath, Type: &hostPathType},
 			},
 			AccessModes:                   []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-			PersistentVolumeReclaimPolicy: "Retain",
+			PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimPolicy(s.Spec.Container.Volume.ReclaimPolicy),
 		},
 	}
 }

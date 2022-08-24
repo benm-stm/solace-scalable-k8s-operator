@@ -25,12 +25,16 @@ import (
 
 // SolaceScalableSpec defines the desired state of SolaceScalable
 type Container struct {
-	//standard docker command
-	//docker run -d -p 8080:8080 -p 55555:55555 --shm-size=1g --env username_admin_globalaccesslevel=admin --env username_admin_password=admin --name=solace --mount type=bind,source=/mnt/solace,destination=/var/lib/solace,ro=false solace/solace-pubsub-standard
-	Image string `json:"image,omitempty"`
-	Name  string `json:"name,omitempty"`
-	//PortsRange string `json:"portsRange,omitempty"`
-	Env []Env `json:"env,omitempty"`
+	Image  string `json:"image,omitempty"`
+	Name   string `json:"name,omitempty"`
+	Env    []Env  `json:"env,omitempty"`
+	Volume Volume `json:"volume,omitempty"`
+}
+type Volume struct {
+	Name          string `json:"name,omitempty"`
+	Size          string `json:"size,omitempty"`
+	HostPath      string `json:"hostPath,omitempty"`
+	ReclaimPolicy string `json:"reclaimPolicy,omitempty"`
 }
 type Env struct {
 	Name  string `json:"name,omitempty"`

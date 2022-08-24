@@ -19,7 +19,6 @@ func Statefulset(s *scalablev1alpha1.SolaceScalable, labels map[string]string) *
 	if s.Spec.PvClass == "localManual" {
 		storageClassName = ""
 	}
-	storageSize := "50Gi"
 
 	return &v1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -109,10 +108,10 @@ func Statefulset(s *scalablev1alpha1.SolaceScalable, labels map[string]string) *
 							},
 						},
 						{
-							Name: "storage",
+							Name: s.Spec.Container.Volume.Name,
 							VolumeSource: corev1.VolumeSource{
 								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-									ClaimName: "storage",
+									ClaimName: s.Spec.Container.Volume.Name,
 								},
 							},
 						},
@@ -123,14 +122,14 @@ func Statefulset(s *scalablev1alpha1.SolaceScalable, labels map[string]string) *
 			UpdateStrategy:  v1.StatefulSetUpdateStrategy{},
 			MinReadySeconds: 0,
 			PersistentVolumeClaimRetentionPolicy: &v1.StatefulSetPersistentVolumeClaimRetentionPolicy{
-				WhenDeleted: "Retain",
-				WhenScaled:  "Retain",
+				WhenDeleted: v1.PersistentVolumeClaimRetentionPolicyType(s.Spec.Container.Volume.ReclaimPolicy),
+				WhenScaled:  v1.PersistentVolumeClaimRetentionPolicyType(s.Spec.Container.Volume.ReclaimPolicy),
 			},
 
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:         "storage",
+						Name:         s.Spec.Container.Volume.Name,
 						GenerateName: name,
 						Namespace:    s.Namespace,
 						Labels:       labels,
@@ -139,7 +138,7 @@ func Statefulset(s *scalablev1alpha1.SolaceScalable, labels map[string]string) *
 						AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
-								"storage": resource.MustParse(storageSize),
+								corev1.ResourceName(s.Spec.Container.Volume.Name): resource.MustParse(s.Spec.Container.Volume.Size),
 							},
 						},
 						StorageClassName: &storageClassName,
