@@ -24,6 +24,12 @@ helm install --namespace ingress-controller --create-namespace --set controller.
 
 helm install --namespace ingress-controller --create-namespace --set controller.ingressClass='haproxy-sub',controller.ingressClassResource.name='haproxy-sub',controller.replicaCount=1,controller.extraArgs={'--configmap-tcp-services=solacescalable/solacescalable-sub-tcp-ingress'} haproxy-sub haproxytech/kubernetes-ingress
 ```
+
+#### solace admin password
+```
+kubectl create secret  -n solacescalable generic solacescalable --from-literal adminPassword=<your password>
+```
+ps: if you run it like above, don't forget to clean your shell history
 ### Running on the cluster
 1. Install Instances of Custom Resources:
 

@@ -46,7 +46,7 @@ type SolaceMergedResps struct {
 
 func GetSolaceOpenPorts(s *scalablev1alpha1.SolaceScalable, ctx context.Context) ([]int32, error) {
 	var ports []int32
-	bodyText, _, err := CallSolaceSempApi(s, "/config/msgVpns", ctx)
+	bodyText, _, err := CallSolaceSempApi(s, "/config/msgVpns", ctx, solaceAdminPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +64,7 @@ func GetEnabledSolaceMsgVpns(
 			"msgVpnName,enabled,*Port"+
 			"&where=enabled==true",
 		ctx,
+		solaceAdminPassword,
 	)
 	if err != nil {
 		return SolaceMsgVpnsResp{}, err
@@ -92,6 +93,7 @@ func (m *SolaceMsgVpnsResp) GetSolaceClientUsernames(
 				"clientUsername,enabled,msgVpnName"+
 				"&where=clientUsername!=*client-username",
 			ctx,
+			solaceAdminPassword,
 		)
 		if err != nil {
 			return SolaceClientUsernamesResp{}, err

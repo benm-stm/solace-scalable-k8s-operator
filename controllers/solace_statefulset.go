@@ -95,7 +95,7 @@ func Statefulset(s *scalablev1alpha1.SolaceScalable, labels map[string]string) *
 									SubPath:   "jail",
 								},
 							},
-							Env: EnvVars(&s.Spec),
+							Env: s.Spec.Container.Env,
 						},
 					},
 					Volumes: []corev1.Volume{

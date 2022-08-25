@@ -38,9 +38,10 @@ type SolaceScalableReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//var blacklistedClientUsernames = [1]string{"#client-username"}
-
 var hashStore = make(map[string]string)
+var solaceAdminPassword string
+
+//solaceAdminPassword =
 
 //+kubebuilder:rbac:groups=scalable.solace.io,resources=solacescalables,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=scalable.solace.io,resources=solacescalables/status,verbs=get;update;patch
@@ -71,6 +72,15 @@ func (r *SolaceScalableReconciler) Reconcile(ctx context.Context, request ctrl.R
 		}
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
+	}
+
+	// check secret creation and store value
+	if solaceAdminPassword == "" {
+		foundS, err := r.GetSolaceSecret(solaceScalable, ctx)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		solaceAdminPassword = GetSecretFromKey(solaceScalable, foundS, ctx)
 	}
 
 	// TODO: Solace statefulset creation
@@ -110,7 +120,12 @@ func (r *SolaceScalableReconciler) Reconcile(ctx context.Context, request ctrl.R
 		return reconcile.Result{}, err
 	}
 
-	if _, success, _ := CallSolaceSempApi(solaceScalable, "/monitor/about/api", ctx); success {
+	if _, success, _ := CallSolaceSempApi(
+		solaceScalable,
+		"/monitor/about/api",
+		ctx,
+		solaceAdminPassword,
+	); success {
 		// get open svc pub/sub ports
 		m, err := GetEnabledSolaceMsgVpns(solaceScalable, ctx)
 		if err != nil {
