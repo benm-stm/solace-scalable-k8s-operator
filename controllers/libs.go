@@ -36,7 +36,7 @@ func AsSha256(o interface{}) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func Unique(intSlice []int32) []int32 {
+func UniqueAndNonZero(intSlice []int32) []int32 {
 	keys := make(map[int32]bool)
 	list := []int32{}
 	for _, entry := range intSlice {
@@ -46,25 +46,6 @@ func Unique(intSlice []int32) []int32 {
 		}
 	}
 	return list
-}
-
-func GetEnvOld(s *scalablev1alpha1.SolaceScalable, selector string) string {
-	for e := 0; e < int(len(s.Spec.Container.Env)); e++ {
-
-		if s.Spec.Container.Env[e].Name == selector {
-			return s.Spec.Container.Env[e].Value
-		}
-	}
-	return ""
-}
-
-func GetEnvValue(s *scalablev1alpha1.SolaceScalable, name string) string {
-	for _, v := range s.Spec.Container.Env {
-		if v.Name == name && v.Value != "" {
-			return v.Value
-		}
-	}
-	return ""
 }
 
 func CleanJsonResponse(s string, r string) []int32 {

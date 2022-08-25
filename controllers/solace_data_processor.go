@@ -50,7 +50,7 @@ func GetSolaceOpenPorts(s *scalablev1alpha1.SolaceScalable, ctx context.Context)
 	if err != nil {
 		return nil, err
 	}
-	ports = Unique(CleanJsonResponse(bodyText, ".*Port\":(.*),"))
+	ports = UniqueAndNonZero(CleanJsonResponse(bodyText, ".*Port\":(.*),"))
 	return ports, nil
 }
 
