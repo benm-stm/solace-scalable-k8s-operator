@@ -1,4 +1,4 @@
-module  github.com/benm-stm/solace-scalable-k8s-operator
+module github.com/benm-stm/solace-scalable-k8s-operator
 
 go 1.18
 

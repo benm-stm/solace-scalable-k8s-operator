@@ -56,7 +56,7 @@ func (r *SolaceScalableReconciler) DeleteSolaceConsoleSvc(
 	log := log.FromContext(ctx)
 	i := int(solaceScalable.Spec.Replicas)
 	// loop indefinitely until not finding an existi_ng console service
-	for true {
+	for {
 		svc := SvcConsole(solaceScalable, i)
 		foundExtraSvc := &corev1.Service{}
 		if err := r.Get(ctx, types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, foundExtraSvc); err != nil {

@@ -80,6 +80,10 @@ spec:
                         type: string
                     type: object
                 type: object
+              ignoredClientUsernames:
+                items:
+                  type: string
+                type: array
               pvClass:
                 type: string
               replicas:

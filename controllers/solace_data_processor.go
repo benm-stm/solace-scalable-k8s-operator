@@ -7,8 +7,6 @@ import (
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 )
 
-var blacklistedClientUsernames = []string{"#client-username"}
-
 // message vpns response struct
 type SolaceMsgVpnResp struct {
 	MsgVpnName                             string `json:"msgVpnName"`

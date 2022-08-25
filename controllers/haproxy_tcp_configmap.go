@@ -6,7 +6,6 @@ import (
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -17,9 +16,9 @@ func NewtcpConfigmap(
 	data map[string]string,
 	nature string,
 	labels map[string]string,
-) *v1.ConfigMap {
+) *corev1.ConfigMap {
 
-	return &v1.ConfigMap{
+	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s.Name + "-" + nature + "-tcp-ingress",
 			Namespace: s.Namespace,
@@ -36,7 +35,7 @@ func (r *SolaceScalableReconciler) CreateSolaceTcpConfigmap(
 	nature string,
 	solaceScalable *scalablev1alpha1.SolaceScalable,
 	ctx context.Context,
-) (*v1.ConfigMap, *v1.ConfigMap, error) {
+) (*corev1.ConfigMap, *corev1.ConfigMap, error) {
 	log := log.FromContext(ctx)
 	configMap := NewtcpConfigmap(solaceScalable, *data, nature, Labels(solaceScalable))
 
@@ -56,8 +55,8 @@ func (r *SolaceScalableReconciler) CreateSolaceTcpConfigmap(
 
 //update tcp ingress configmap
 func (r *SolaceScalableReconciler) UpdateSolaceTcpConfigmap(
-	f *v1.ConfigMap,
-	configMap *v1.ConfigMap,
+	f *corev1.ConfigMap,
+	configMap *corev1.ConfigMap,
 	solaceScalable *scalablev1alpha1.SolaceScalable,
 	ctx context.Context,
 	hashStore *map[string]string,
@@ -73,31 +72,6 @@ func (r *SolaceScalableReconciler) UpdateSolaceTcpConfigmap(
 		f.Data = configMap.Data
 		(*hashStore)[f.Name] = AsSha256(datasMarshal)
 		if err := r.Update(context.TODO(), f); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// update default haproxy configmap
-func (r *SolaceScalableReconciler) UpdateDefaultHaproxyConfigmap(
-	FoundHaproxyConfigMap *v1.ConfigMap,
-	configMap *v1.ConfigMap,
-	solaceScalable *scalablev1alpha1.SolaceScalable,
-	ctx context.Context,
-	hashStore *map[string]string,
-) error {
-	log := log.FromContext(ctx)
-	newMarshal, _ := json.Marshal(FoundHaproxyConfigMap.Data)
-	datasMarshal, _ := json.Marshal(configMap.Data)
-
-	if len(*hashStore) == 0 {
-		(*hashStore)[FoundHaproxyConfigMap.Name] = AsSha256(newMarshal)
-	} else if AsSha256(datasMarshal) != (*hashStore)[FoundHaproxyConfigMap.Name] {
-		log.Info("Updating HAProxy default ConfigMap", configMap.Namespace, configMap.Name)
-		FoundHaproxyConfigMap.Data = configMap.Data
-		(*hashStore)[FoundHaproxyConfigMap.Name] = AsSha256(datasMarshal)
-		if err := r.Update(context.TODO(), FoundHaproxyConfigMap); err != nil {
 			return err
 		}
 	}

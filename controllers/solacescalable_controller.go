@@ -110,7 +110,7 @@ func (r *SolaceScalableReconciler) Reconcile(ctx context.Context, request ctrl.R
 		return reconcile.Result{}, err
 	}
 
-	if _, success, _ := CallSolaceSempApi(solaceScalable, "/monitor/about/api", ctx); success == true {
+	if _, success, _ := CallSolaceSempApi(solaceScalable, "/monitor/about/api", ctx); success {
 		// get open svc pub/sub ports
 		m, err := GetEnabledSolaceMsgVpns(solaceScalable, ctx)
 		if err != nil {
