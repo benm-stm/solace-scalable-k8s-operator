@@ -1,0 +1,125 @@
+package controllers
+
+import (
+	"context"
+	"testing"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+)
+
+func MockConfigmap() (
+	*SolaceScalableReconciler,
+	[]runtime.Object,
+	*corev1.ConfigMap,
+) {
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-test-tcp-ingress",
+			Namespace: "test",
+		},
+		Data: map[string]string{
+			"1880": "solasescalable/test-svc-init:1880",
+		},
+	}
+	//cm := &corev1.ConfigMap{}
+
+	// Objects to track in the fake client.
+	objs := []runtime.Object{cm}
+
+	// Register operator types with the runtime scheme.
+	s := scheme.Scheme
+	s.AddKnownTypes(corev1.SchemeGroupVersion, cm)
+
+	// Create a fake client to mock API calls.
+	cl := fake.NewFakeClient(objs...)
+
+	// Create a ReconcileMemcached object with the scheme and fake client.
+	return &SolaceScalableReconciler{
+		Client: cl,
+		Scheme: s,
+	}, objs, cm
+}
+
+func TestNewtcpConfigmap(t *testing.T) {
+	nature := "pub"
+	data := map[string]string{
+		"1883": "solasescalable/test-svc:1883",
+	}
+	got := NewtcpConfigmap(
+		&solaceScalable,
+		data,
+		nature,
+		Labels(&solaceScalable),
+	)
+	if got.ObjectMeta.Name != solaceScalable.ObjectMeta.Name+"-"+
+		nature+"-tcp-ingress" ||
+		got.Data["1883"] != data["1883"] {
+		t.Errorf("got %v, wanted %v", got, nil)
+	}
+}
+
+func TestCreateSolaceTcpConfigmap(t *testing.T) {
+	r, _, _ := MockConfigmap()
+	//when cm exist
+	nature := "test"
+	data := map[string]string{
+		"1880": "test-srv:1880",
+	}
+
+	cm, foundCm, err := (*r).CreateSolaceTcpConfigmap(
+		&data,
+		nature,
+		&solaceScalable,
+		context.TODO(),
+	)
+	if cm == nil || foundCm == nil || err != nil {
+		t.Errorf("FoundCm %v, wantedCm %v error %v", foundCm, cm, err)
+	}
+
+	//when cm doesn't exist
+	nature = "testNotFound"
+	cm, foundCm, err = (*r).CreateSolaceTcpConfigmap(
+		&data,
+		nature,
+		&solaceScalable,
+		context.TODO(),
+	)
+	if cm != nil || foundCm != nil || err != nil {
+		t.Errorf("FoundCm %v, wantedCm %v error %v", foundCm, cm, err)
+	}
+}
+
+func TestUpdateSolaceTcpConfigmap(t *testing.T) {
+	r, _, cm := MockConfigmap()
+	// when does not exist
+	hashStore := map[string]string{}
+	err := (*r).UpdateSolaceTcpConfigmap(
+		cm,
+		cm,
+		&solaceScalable,
+		context.TODO(),
+		&hashStore,
+	)
+	if hashStore[cm.Name] != "648a4a777504b4e69a1e63ebce71340aeb0d18667f87c88556f618279aaf40d1" {
+		t.Errorf("when does not exist : got %v, wanted %v error %v", "test", hashStore[cm.Name], err)
+	}
+
+	// when configmap have changed
+	hashStore = map[string]string{
+		cm.Name: "test",
+	}
+	err = (*r).UpdateSolaceTcpConfigmap(
+		cm,
+		cm,
+		&solaceScalable,
+		context.TODO(),
+		&hashStore,
+	)
+	if hashStore[cm.Name] == "test" {
+		t.Errorf("got %v, wanted %v error %v", "test", hashStore[cm.Name], err)
+	}
+}

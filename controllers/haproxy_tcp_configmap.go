@@ -40,7 +40,7 @@ func (r *SolaceScalableReconciler) CreateSolaceTcpConfigmap(
 	configMap := NewtcpConfigmap(solaceScalable, *data, nature, Labels(solaceScalable))
 
 	FoundHaproxyConfigMap := &corev1.ConfigMap{}
-	if err := r.Get(context.TODO(),
+	if err := r.Get(ctx,
 		types.NamespacedName{
 			Name:      configMap.Name,
 			Namespace: configMap.Namespace,
@@ -55,23 +55,23 @@ func (r *SolaceScalableReconciler) CreateSolaceTcpConfigmap(
 
 //update tcp ingress configmap
 func (r *SolaceScalableReconciler) UpdateSolaceTcpConfigmap(
-	f *corev1.ConfigMap,
+	c *corev1.ConfigMap,
 	configMap *corev1.ConfigMap,
 	solaceScalable *scalablev1alpha1.SolaceScalable,
 	ctx context.Context,
 	hashStore *map[string]string,
 ) error {
 	log := log.FromContext(ctx)
-	newMarshal, _ := json.Marshal(f.Data)
+	newMarshal, _ := json.Marshal(c.Data)
 	datasMarshal, _ := json.Marshal(configMap.Data)
 
 	if len(*hashStore) == 0 {
-		(*hashStore)[f.Name] = AsSha256(newMarshal)
-	} else if AsSha256(datasMarshal) != (*hashStore)[f.Name] {
+		(*hashStore)[c.Name] = AsSha256(newMarshal)
+	} else if AsSha256(datasMarshal) != (*hashStore)[c.Name] {
 		log.Info("Updating HAProxy Ingress ConfigMap", configMap.Namespace, configMap.Name)
-		f.Data = configMap.Data
-		(*hashStore)[f.Name] = AsSha256(datasMarshal)
-		if err := r.Update(context.TODO(), f); err != nil {
+		c.Data = configMap.Data
+		(*hashStore)[c.Name] = AsSha256(datasMarshal)
+		if err := r.Update(context.TODO(), c); err != nil {
 			return err
 		}
 	}
