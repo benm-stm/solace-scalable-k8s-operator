@@ -18,6 +18,7 @@ var solaceScalable = scalablev1alpha1.SolaceScalable{
 		Haproxy: scalablev1alpha1.Haproxy{
 			Namespace: "solacescalable",
 		},
+		ClusterUrl: "scalable.dev.gcp.digital-backbone.io",
 	},
 	Status: scalablev1alpha1.SolaceScalableStatus{},
 }

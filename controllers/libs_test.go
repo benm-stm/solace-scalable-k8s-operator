@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"testing"
 )
 
@@ -53,21 +54,28 @@ func TestCleanJsonResponse(t *testing.T) {
 	}
 }
 
-/*
 func TestCallSolaceSempApi(t *testing.T) {
+	//when url does not respond
 	gotV, gotB, gotErr := CallSolaceSempApi(
 		&solaceScalable,
-		"/",
+		"/monitor/",
 		context.TODO(),
-		"dummyPwd",
+		"",
 	)
-	wantV, wantB := "test return", true
-	var wantErr error = nil
-	if gotV != wantV || gotB != wantB || gotErr != wantErr {
-		t.Errorf("got %v, %v,%v, wanted  %v, %v,%v",
-			gotV, gotB, gotErr, wantV, wantB, wantErr)
+	if gotV != "" || gotB != false || gotErr != nil {
+		t.Errorf("got %v, %v,%v", gotV, gotB, gotErr)
 	}
-}*/
+	//when url is valid
+	gotV, gotB, gotErr = CallSolaceSempApi(
+		&solaceScalable,
+		"/config/about",
+		context.TODO(),
+		"",
+	)
+	if gotV == "" || gotB == false || gotErr != nil {
+		t.Errorf("got %v, %v,%v check if your solace instances are up", gotV, gotB, gotErr)
+	}
+}
 
 func TestContains(t *testing.T) {
 	got := Contains([]string{"a", "b", "c", "a"},

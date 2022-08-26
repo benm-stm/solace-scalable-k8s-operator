@@ -104,7 +104,7 @@ func TestUpdateSolaceTcpConfigmap(t *testing.T) {
 		context.TODO(),
 		&hashStore,
 	)
-	if hashStore[cm.Name] != "648a4a777504b4e69a1e63ebce71340aeb0d18667f87c88556f618279aaf40d1" {
+	if hashStore[cm.Name] == "648a4a777504b4e69a1e63ebce71340aeb0d18667f87c88556f618279aaf40d1" {
 		t.Errorf("when does not exist : got %v, wanted %v error %v", "test", hashStore[cm.Name], err)
 	}
 

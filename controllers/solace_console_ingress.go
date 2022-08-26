@@ -73,7 +73,13 @@ func (r *SolaceScalableReconciler) CreateSolaceConsoleIngress(
 	log := log.FromContext(ctx)
 	foundIngress := &v1.Ingress{}
 	ingConsole := IngressConsole(solaceScalable, Labels(solaceScalable))
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: ingConsole.Name, Namespace: ingConsole.Namespace}, foundIngress); err != nil {
+	if err := r.Get(context.TODO(),
+		types.NamespacedName{
+			Name:      ingConsole.Name,
+			Namespace: ingConsole.Namespace,
+		},
+		foundIngress,
+	); err != nil {
 		log.Info("Creating Solace Console Ingress", ingConsole.Namespace, ingConsole.Name)
 		if err = r.Create(context.TODO(), ingConsole); err != nil {
 			return err
