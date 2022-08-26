@@ -2,21 +2,7 @@ package controllers
 
 import (
 	"testing"
-
-	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-var solaceScalable = scalablev1alpha1.SolaceScalable{
-	TypeMeta: metav1.TypeMeta{},
-	ObjectMeta: metav1.ObjectMeta{
-		Name:      "test",
-		Namespace: "test",
-		Labels:    map[string]string{},
-	},
-	Spec:   scalablev1alpha1.SolaceScalableSpec{},
-	Status: scalablev1alpha1.SolaceScalableStatus{},
-}
 
 func TestLabels(t *testing.T) {
 	got := Labels(&solaceScalable)
@@ -44,7 +30,7 @@ func TestAsSha256(t *testing.T) {
 	}
 }
 
-func TestUnique(t *testing.T) {
+func TestUniqueAndNonZero(t *testing.T) {
 	got := UniqueAndNonZero([]int32{1, 2, 3, 2, 0})
 	want := []int32{1, 2, 3}
 	if len(got) != len(want) {
@@ -58,11 +44,37 @@ func TestUnique(t *testing.T) {
 }
 
 func TestCleanJsonResponse(t *testing.T) {
-	got := CleanJsonResponse("testPort\":8000,test2Port\":8001",
+	got := CleanJsonResponse("test-Port\":8000,test2-Port\":8001",
 		".*Port\":(.*),",
 	)
 	want := []int32{8000, 8001}
 	if CheckEq(got, want) {
+		t.Errorf("got %v, wanted %v", got, want)
+	}
+}
+
+/*
+func TestCallSolaceSempApi(t *testing.T) {
+	gotV, gotB, gotErr := CallSolaceSempApi(
+		&solaceScalable,
+		"/",
+		context.TODO(),
+		"dummyPwd",
+	)
+	wantV, wantB := "test return", true
+	var wantErr error = nil
+	if gotV != wantV || gotB != wantB || gotErr != wantErr {
+		t.Errorf("got %v, %v,%v, wanted  %v, %v,%v",
+			gotV, gotB, gotErr, wantV, wantB, wantErr)
+	}
+}*/
+
+func TestContains(t *testing.T) {
+	got := Contains([]string{"a", "b", "c", "a"},
+		"a",
+	)
+	want := true
+	if got != want {
 		t.Errorf("got %v, wanted %v", got, want)
 	}
 }

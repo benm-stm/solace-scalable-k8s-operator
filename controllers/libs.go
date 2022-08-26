@@ -40,7 +40,7 @@ func UniqueAndNonZero(intSlice []int32) []int32 {
 	keys := make(map[int32]bool)
 	list := []int32{}
 	for _, entry := range intSlice {
-		if _, value := keys[entry]; !value && entry == 0 {
+		if _, value := keys[entry]; !value && entry != 0 {
 			keys[entry] = true
 			list = append(list, entry)
 		}
