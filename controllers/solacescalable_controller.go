@@ -80,7 +80,7 @@ func (r *SolaceScalableReconciler) Reconcile(ctx context.Context, request ctrl.R
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		solaceAdminPassword = GetSecretFromKey(solaceScalable, foundS, ctx)
+		solaceAdminPassword = GetSecretFromKey(solaceScalable, foundS, "username_admin_password", ctx)
 	}
 
 	// TODO: Solace statefulset creation

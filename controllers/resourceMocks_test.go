@@ -17,7 +17,19 @@ var solaceScalable = scalablev1alpha1.SolaceScalable{
 		Container: scalablev1alpha1.Container{
 			Image: "solacescalable:test",
 			Name:  "solacescalable",
-			Env:   []corev1.EnvVar{},
+			Env: []corev1.EnvVar{
+				{
+					Name: "testSecret",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "testSecret",
+							},
+							Key: "test",
+						},
+					},
+				},
+			},
 			Volume: scalablev1alpha1.Volume{
 				Name:          "volume",
 				Size:          "50Gi",
@@ -31,6 +43,15 @@ var solaceScalable = scalablev1alpha1.SolaceScalable{
 			Namespace: "solacescalable",
 		},
 		PvClass: "localManual",
+	},
+}
+var solaceScalableSecret = corev1.Secret{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "testSecret",
+		Namespace: "test",
+	},
+	Data: map[string][]byte{
+		"test": []byte("test"),
 	},
 }
 

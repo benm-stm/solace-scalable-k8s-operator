@@ -16,21 +16,37 @@ func (r *SolaceScalableReconciler) GetSolaceSecret(
 ) (*corev1.Secret, error) {
 	log := log.FromContext(ctx)
 	foundS := &corev1.Secret{}
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: s.Namespace}, foundS); err != nil {
+	if err := r.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      s.Name,
+			Namespace: s.Namespace,
+		},
+		foundS); err != nil {
 		log.Error(err, "Declared solace secret does not exist please create it!")
+		return nil, err
 	}
 	return foundS, nil
 }
 
-func GetSecretFromKey(s *scalablev1alpha1.SolaceScalable, secret *corev1.Secret, ctx context.Context) string {
-	key := s.Spec.Container.Env[GetSecretEnvIndex(s, ctx)].ValueFrom.SecretKeyRef.Key
+func GetSecretFromKey(s *scalablev1alpha1.SolaceScalable,
+	secret *corev1.Secret,
+	secretName string,
+	ctx context.Context,
+) string {
+	key := s.Spec.Container.
+		Env[GetSecretEnvIndex(s, secretName, ctx)].
+		ValueFrom.SecretKeyRef.Key
 	return string(secret.Data[key])
 }
 
-func GetSecretEnvIndex(s *scalablev1alpha1.SolaceScalable, ctx context.Context) int {
+func GetSecretEnvIndex(s *scalablev1alpha1.SolaceScalable,
+	secretName string,
+	ctx context.Context,
+) int {
 	log := log.FromContext(ctx)
 	for i, v := range s.Spec.Container.Env {
-		if v.Name == "username_admin_password" {
+		if v.Name == secretName {
 			return i
 		}
 	}
