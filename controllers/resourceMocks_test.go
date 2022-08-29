@@ -14,13 +14,24 @@ var solaceScalable = scalablev1alpha1.SolaceScalable{
 		Labels:    map[string]string{},
 	},
 	Spec: scalablev1alpha1.SolaceScalableSpec{
-		Replicas: 1,
+		Container: scalablev1alpha1.Container{
+			Image: "solacescalable:test",
+			Name:  "solacescalable",
+			Env:   []corev1.EnvVar{},
+			Volume: scalablev1alpha1.Volume{
+				Name:          "volume",
+				Size:          "50Gi",
+				HostPath:      "/opt/storage",
+				ReclaimPolicy: "Retain",
+			},
+		},
+		Replicas:   1,
+		ClusterUrl: "scalable.dev.gcp.digital-backbone.io",
 		Haproxy: scalablev1alpha1.Haproxy{
 			Namespace: "solacescalable",
 		},
-		ClusterUrl: "scalable.dev.gcp.digital-backbone.io",
+		PvClass: "localManual",
 	},
-	Status: scalablev1alpha1.SolaceScalableStatus{},
 }
 
 var appProtocol = "http"

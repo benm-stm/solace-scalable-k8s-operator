@@ -107,7 +107,7 @@ func (r *SolaceScalableReconciler) Reconcile(ctx context.Context, request ctrl.R
 		}
 
 		// create solace instances PV
-		if err := r.CreateSolaceLocalPv(solaceScalable, i, ctx); err != nil {
+		if _, err := r.CreateSolaceLocalPv(solaceScalable, i, ctx); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
