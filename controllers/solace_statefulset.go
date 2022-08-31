@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func Statefulset(s *scalablev1alpha1.SolaceScalable, labels map[string]string) *v1.StatefulSet {
+func NewStatefulset(s *scalablev1alpha1.SolaceScalable, labels map[string]string) *v1.StatefulSet {
 	name := s.Name
 	storageClassName := s.Spec.PvClass
 	if s.Spec.PvClass == "localManual" {
@@ -156,27 +156,25 @@ func Statefulset(s *scalablev1alpha1.SolaceScalable, labels map[string]string) *
 func (r *SolaceScalableReconciler) CreateStatefulSet(
 	ss *v1.StatefulSet,
 	ctx context.Context,
-) (*v1.StatefulSet, error) {
+) error {
 	log := log.FromContext(ctx)
-	foundSs := &v1.StatefulSet{}
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: ss.Name, Namespace: ss.Namespace}, foundSs); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: ss.Name, Namespace: ss.Namespace}, &v1.StatefulSet{}); err != nil {
 		log.Info("Creating Statefulset", ss.Namespace, ss.Name)
-		if err = r.Create(context.TODO(), ss); err != nil {
-			return nil, err
+		if err = r.Create(ctx, ss); err != nil {
+			return err
 		}
 	}
-	return foundSs, nil
+	return nil
 }
 
 // Update the found object and write the result back if there are any changes
 func (r *SolaceScalableReconciler) UpdateStatefulSet(
 	ss *v1.StatefulSet,
-	foundSs *v1.StatefulSet,
 	ctx context.Context,
 	hashStore *map[string]string,
 ) error {
 	log := log.FromContext(ctx)
-	newMarshal, _ := json.Marshal(foundSs.Spec)
+	newMarshal, _ := json.Marshal(ss.Spec)
 	if len(*hashStore) == 0 {
 		(*hashStore)[ss.Name] = AsSha256(newMarshal)
 	} else if AsSha256(newMarshal) != (*hashStore)[ss.Name] {

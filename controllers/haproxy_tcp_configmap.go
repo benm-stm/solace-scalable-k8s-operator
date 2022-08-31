@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func NewtcpConfigmap(
+func NewTcpConfigmap(
 	s *scalablev1alpha1.SolaceScalable,
 	data map[string]string,
 	nature string,
@@ -31,48 +31,49 @@ func NewtcpConfigmap(
 
 //create tcp ingress configmap
 func (r *SolaceScalableReconciler) CreateSolaceTcpConfigmap(
+	solaceScalable *scalablev1alpha1.SolaceScalable,
 	data *map[string]string,
 	nature string,
-	solaceScalable *scalablev1alpha1.SolaceScalable,
 	ctx context.Context,
-) (*corev1.ConfigMap, *corev1.ConfigMap, error) {
+) (*corev1.ConfigMap, error) {
 	log := log.FromContext(ctx)
-	configMap := NewtcpConfigmap(solaceScalable, *data, nature, Labels(solaceScalable))
+	configMap := NewTcpConfigmap(solaceScalable, *data, nature, Labels(solaceScalable))
 
-	FoundHaproxyConfigMap := &corev1.ConfigMap{}
+	// check if the configmap exists
 	if err := r.Get(ctx,
 		types.NamespacedName{
 			Name:      configMap.Name,
 			Namespace: configMap.Namespace,
-		}, FoundHaproxyConfigMap,
+		}, &corev1.ConfigMap{},
 	); err != nil {
 		log.Info("Creating HAProxy Ingress ConfigMap", configMap.Namespace, configMap.Name)
-		err = r.Create(context.TODO(), configMap)
-		return nil, nil, err
+		err = r.Create(ctx, configMap)
+		return nil, err
 	}
-	return configMap, FoundHaproxyConfigMap, nil
+	return configMap, nil
 }
 
 //update tcp ingress configmap
 func (r *SolaceScalableReconciler) UpdateSolaceTcpConfigmap(
-	c *corev1.ConfigMap,
-	configMap *corev1.ConfigMap,
 	solaceScalable *scalablev1alpha1.SolaceScalable,
+	configMap *corev1.ConfigMap,
 	ctx context.Context,
 	hashStore *map[string]string,
 ) error {
-	log := log.FromContext(ctx)
-	newMarshal, _ := json.Marshal(c.Data)
-	datasMarshal, _ := json.Marshal(configMap.Data)
+	// when i delete the configmap, a nil pointer will trig
+	if configMap != nil {
+		log := log.FromContext(ctx)
+		datasMarshal, _ := json.Marshal(configMap.Data)
 
-	if len(*hashStore) == 0 {
-		(*hashStore)[c.Name] = AsSha256(newMarshal)
-	} else if AsSha256(datasMarshal) != (*hashStore)[c.Name] {
-		log.Info("Updating HAProxy Ingress ConfigMap", configMap.Namespace, configMap.Name)
-		c.Data = configMap.Data
-		(*hashStore)[c.Name] = AsSha256(datasMarshal)
-		if err := r.Update(context.TODO(), c); err != nil {
-			return err
+		if (*hashStore)[configMap.Name] == "" {
+			(*hashStore)[configMap.Name] = AsSha256(datasMarshal)
+		} else if AsSha256(datasMarshal) != (*hashStore)[configMap.Name] {
+			log.Info("Updating HAProxy Ingress ConfigMap", configMap.Namespace, configMap.Name)
+			if err := r.Update(ctx, configMap); err != nil {
+				return err
+			}
+			//update hash to not trig update if conf has not changed
+			(*hashStore)[configMap.Name] = AsSha256(datasMarshal)
 		}
 	}
 	return nil

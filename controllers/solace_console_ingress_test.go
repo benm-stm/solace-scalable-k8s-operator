@@ -40,7 +40,7 @@ func MockSolaceConsoleReconciler() *SolaceScalableReconciler {
 }
 
 func TestIngressConsole(t *testing.T) {
-	got := IngressConsole(
+	got := NewIngressConsole(
 		&solaceScalable,
 		Labels(&solaceScalable),
 	)
@@ -64,6 +64,7 @@ func TestCreateSolaceConsoleIngress(t *testing.T) {
 	r, _, _ := MockHaproxyReconciler()
 	err := (*r).CreateSolaceConsoleIngress(
 		&solaceScalable,
+		NewIngressConsole(&solaceScalable, Labels(&solaceScalable)),
 		context.TODO(),
 	)
 	if err != nil {

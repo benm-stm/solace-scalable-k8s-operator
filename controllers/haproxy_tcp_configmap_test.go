@@ -49,7 +49,7 @@ func TestNewtcpConfigmap(t *testing.T) {
 	data := map[string]string{
 		"1883": "solasescalable/test-svc:1883",
 	}
-	got := NewtcpConfigmap(
+	got := NewTcpConfigmap(
 		&solaceScalable,
 		data,
 		nature,
@@ -70,26 +70,26 @@ func TestCreateSolaceTcpConfigmap(t *testing.T) {
 		"1880": "test-srv:1880",
 	}
 
-	cm, foundCm, err := (*r).CreateSolaceTcpConfigmap(
+	cm, err := (*r).CreateSolaceTcpConfigmap(
+		&solaceScalable,
 		&data,
 		nature,
-		&solaceScalable,
 		context.TODO(),
 	)
-	if cm == nil || foundCm == nil || err != nil {
-		t.Errorf("FoundCm %v, wantedCm %v error %v", foundCm, cm, err)
+	if cm == nil || err != nil {
+		t.Errorf("wantedCm %v error %v", cm, err)
 	}
 
 	//when cm doesn't exist
 	nature = "testNotFound"
-	cm, foundCm, err = (*r).CreateSolaceTcpConfigmap(
+	cm, err = (*r).CreateSolaceTcpConfigmap(
+		&solaceScalable,
 		&data,
 		nature,
-		&solaceScalable,
 		context.TODO(),
 	)
-	if cm != nil || foundCm != nil || err != nil {
-		t.Errorf("FoundCm %v, wantedCm %v error %v", foundCm, cm, err)
+	if cm != nil || err != nil {
+		t.Errorf("wantedCm %v error %v", cm, err)
 	}
 }
 
@@ -98,9 +98,8 @@ func TestUpdateSolaceTcpConfigmap(t *testing.T) {
 	// when does not exist
 	hashStore := map[string]string{}
 	err := (*r).UpdateSolaceTcpConfigmap(
-		cm,
-		cm,
 		&solaceScalable,
+		cm,
 		context.TODO(),
 		&hashStore,
 	)
@@ -113,9 +112,8 @@ func TestUpdateSolaceTcpConfigmap(t *testing.T) {
 		cm.Name: "test",
 	}
 	err = (*r).UpdateSolaceTcpConfigmap(
-		cm,
-		cm,
 		&solaceScalable,
+		cm,
 		context.TODO(),
 		&hashStore,
 	)

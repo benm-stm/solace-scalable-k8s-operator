@@ -11,7 +11,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func MockHaproxyReconciler() (*SolaceScalableReconciler, []runtime.Object, *corev1.Service) {
+func MockHaproxyReconciler() (
+	*SolaceScalableReconciler,
+	[]runtime.Object,
+	*corev1.Service,
+) {
 	haproxy := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "solacescalable",
@@ -38,7 +42,7 @@ func MockHaproxyReconciler() (*SolaceScalableReconciler, []runtime.Object, *core
 }
 
 func TestSvcHaproxy(t *testing.T) {
-	got := SvcHaproxy(
+	got := NewSvcHaproxy(
 		&solaceScalable,
 		ports,
 		map[string]string{

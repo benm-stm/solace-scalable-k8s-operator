@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"strconv"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -12,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func PersistentVolume(s *scalablev1alpha1.SolaceScalable,
+func NewPersistentVolume(s *scalablev1alpha1.SolaceScalable,
 	instanceId string,
 	labels map[string]string,
 ) *corev1.PersistentVolume {
@@ -43,17 +42,16 @@ func PersistentVolume(s *scalablev1alpha1.SolaceScalable,
 
 func (r *SolaceScalableReconciler) CreateSolaceLocalPv(
 	s *scalablev1alpha1.SolaceScalable,
-	instanceId int,
+	pv *corev1.PersistentVolume,
 	ctx context.Context,
 ) (bool, error) {
 	// create pvs if pvClass is localManual
 	if s.Spec.PvClass == "localManual" {
 		log := log.FromContext(ctx)
-		pv := PersistentVolume(s, strconv.Itoa(instanceId), Labels(s))
 		foundpv := &corev1.PersistentVolume{}
-		if err := r.Get(context.TODO(), types.NamespacedName{Name: pv.Name, Namespace: pv.Namespace}, foundpv); err != nil {
+		if err := r.Get(ctx, types.NamespacedName{Name: pv.Name, Namespace: pv.Namespace}, foundpv); err != nil {
 			log.Info("Creating pv", pv.Namespace, pv.Name)
-			if err = r.Create(context.TODO(), pv); err != nil {
+			if err = r.Create(ctx, pv); err != nil {
 				return false, err
 			}
 			return true, nil

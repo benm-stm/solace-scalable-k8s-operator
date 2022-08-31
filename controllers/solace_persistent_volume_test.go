@@ -53,7 +53,7 @@ func MockPersistentVolume() (
 }
 
 func TestPersistentVolume(t *testing.T) {
-	got := PersistentVolume(&solaceScalable,
+	got := NewPersistentVolume(&solaceScalable,
 		strconv.Itoa(int(solaceScalable.Spec.Replicas)),
 		Labels(&solaceScalable),
 	)
@@ -64,8 +64,9 @@ func TestPersistentVolume(t *testing.T) {
 
 func TestCreateSolaceLocalPv(t *testing.T) {
 	r, _ := MockPersistentVolume()
-	success, err := r.CreateSolaceLocalPv(&solaceScalable,
-		1,
+	success, err := r.CreateSolaceLocalPv(
+		&solaceScalable,
+		NewPersistentVolume(&solaceScalable, "1", Labels(&solaceScalable)),
 		context.TODO(),
 	)
 	if !success || err != nil {

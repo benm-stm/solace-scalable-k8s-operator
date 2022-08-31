@@ -12,18 +12,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func SvcPubSub(s *scalablev1alpha1.SolaceScalable,
-	m SolaceMergedResp,
-	p int32,
+type SvcId struct {
+	ClientUsername string
+	MsgVpnName     string
+	Port           int32
+	Nature         string
+}
+
+func NewSvcPubSub(
+	s *scalablev1alpha1.SolaceScalable,
+	msgVpnName string,
+	clientUsername string,
+	port int32,
 	pubSub string,
 	labels map[string]string,
 ) *corev1.Service {
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: m.MsgVpnName + "-" +
-				m.ClientUsername + "-" +
-				strconv.FormatInt(int64(p), 10) + "-" +
+			Name: msgVpnName + "-" +
+				clientUsername + "-" +
+				strconv.FormatInt(int64(port), 10) + "-" +
 				pubSub,
 			Namespace: s.Namespace,
 		},
@@ -31,7 +40,7 @@ func SvcPubSub(s *scalablev1alpha1.SolaceScalable,
 			Selector: labels,
 			Ports: []corev1.ServicePort{{
 				Protocol: corev1.ProtocolTCP,
-				Port:     p,
+				Port:     port,
 			}},
 			Type: corev1.ServiceTypeClusterIP,
 		},
@@ -39,74 +48,102 @@ func SvcPubSub(s *scalablev1alpha1.SolaceScalable,
 }
 
 // pubsub SVC creation
-func (r *SolaceScalableReconciler) CreatePubSubSvc(s *scalablev1alpha1.SolaceScalable,
+func ConstructSvcDatas(s *scalablev1alpha1.SolaceScalable,
 	pubSubOpenPorts *[]SolaceMergedResp,
-	enabledMsgVpns *SolaceMsgVpnsResp,
 	nature string,
-	ctx context.Context,
-) (*[]string, *map[string]string, error) {
-	log := log.FromContext(ctx)
+) (*[]string, *map[string]string, []SvcId) {
+	var svcIds = []SvcId{}
 	var pubSubSvcNames = []string{}
-	var data = map[string]string{}
-	for _, i := range *pubSubOpenPorts {
-		for _, j := range i.Ports {
-			if j != 0 {
+	var cmData = map[string]string{}
+	for _, oP := range *pubSubOpenPorts {
+		for _, p := range oP.Ports {
+			if p != 0 {
 				//create pubsub SVC
 				pubSubSvcNames = append(
 					pubSubSvcNames,
-					i.MsgVpnName+"-"+
-						i.ClientUsername+"-"+
-						strconv.FormatInt(int64(j), 10)+"-"+
+					oP.MsgVpnName+"-"+
+						oP.ClientUsername+"-"+
+						strconv.FormatInt(int64(p), 10)+"-"+
 						nature,
 				)
-				pbs := SvcPubSub(s, i, j, nature, Labels(s))
-				foundPubSubSvc := &corev1.Service{}
-				if err := r.Get(
-					context.TODO(),
-					types.NamespacedName{
-						Name:      pbs.Name,
-						Namespace: pbs.Namespace,
-					},
-					foundPubSubSvc,
-				); err != nil {
-					log.Info("Creating pubSub SVC", pbs.Namespace, pbs.Name)
-					if err = r.Create(context.TODO(), pbs); err != nil {
-						return nil, nil, err
-					}
-				}
-				data[strconv.Itoa(int(j))] = s.Namespace + "/" +
-					i.MsgVpnName + "-" +
-					i.ClientUsername + "-" +
-					strconv.Itoa(int(j)) + "-" +
+				cmData[strconv.Itoa(int(p))] = s.Namespace + "/" +
+					oP.MsgVpnName + "-" +
+					oP.ClientUsername + "-" +
+					strconv.Itoa(int(p)) + "-" +
 					nature + ":" +
-					strconv.Itoa(int(j))
+					strconv.Itoa(int(p))
+				svcIds = append(
+					svcIds,
+					SvcId{
+						MsgVpnName:     oP.MsgVpnName,
+						ClientUsername: oP.ClientUsername,
+						Port:           p,
+						Nature:         nature,
+					},
+				)
 			}
 		}
 	}
-	return &pubSubSvcNames, &data, nil
+	return &pubSubSvcNames, &cmData, svcIds
 }
 
-func ListPubSubSvc(solaceScalable *scalablev1alpha1.SolaceScalable, r *SolaceScalableReconciler) (*corev1.ServiceList, *corev1.Service, error) {
+func (r *SolaceScalableReconciler) CreatePubSubSvc(
+	s *scalablev1alpha1.SolaceScalable,
+	newSvcPubSub *corev1.Service,
+	ctx context.Context,
+) error {
+	log := log.FromContext(ctx)
+	foundPubSubSvc := &corev1.Service{}
+	if err := r.Get(
+		ctx,
+		types.NamespacedName{
+			Name:      newSvcPubSub.Name,
+			Namespace: newSvcPubSub.Namespace,
+		},
+		foundPubSubSvc,
+	); err != nil {
+		log.Info("Creating pubSub SVC", newSvcPubSub.Namespace, newSvcPubSub.Name)
+		if err = r.Create(ctx, newSvcPubSub); err != nil {
+			return err
+		}
+
+	}
+	return nil
+}
+
+func (r *SolaceScalableReconciler) ListPubSubSvc(
+	solaceScalable *scalablev1alpha1.SolaceScalable,
+	ctx context.Context,
+) (*corev1.ServiceList, error) {
 	// get existing svc list
-	foundExtraPubSubSvc := &corev1.Service{}
+	//foundExtraPubSubSvc := &corev1.Service{}
 	svcList := &corev1.ServiceList{}
 	listOptions := &client.ListOptions{Namespace: solaceScalable.Namespace}
 
-	if err := r.List(context.TODO(), svcList, listOptions); err != nil {
-		return nil, nil, err
+	if err := r.List(ctx, svcList, listOptions); err != nil {
+		return nil, err
 	}
-	return svcList, foundExtraPubSubSvc, nil
+	return svcList, nil
 }
 
-func DeletePubSubSvc(svcList *corev1.ServiceList, foundExtraPubSubSvc *corev1.Service, pubSubSvcNames *[]string, r *SolaceScalableReconciler, ctx context.Context) error {
+func (r *SolaceScalableReconciler) DeletePubSubSvc(
+	svcList *corev1.ServiceList,
+	pubSubSvcNames *[]string,
+	ctx context.Context,
+) error {
 	log := log.FromContext(ctx)
 	for _, s := range svcList.Items {
 		if !StringInSlice(s.Name, *pubSubSvcNames) && s.Spec.Ports[0].Port != 8080 {
-			if err := r.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, foundExtraPubSubSvc); err != nil {
-				break
-			} else {
+			foundExtraPubSubSvc := &corev1.Service{}
+			if err := r.Get(
+				ctx,
+				types.NamespacedName{
+					Namespace: s.Namespace,
+					Name:      s.Name,
+				}, foundExtraPubSubSvc,
+			); err == nil {
 				log.Info("Delete PubSubSvc", s.Namespace, s.Name)
-				if err = r.Delete(context.TODO(), foundExtraPubSubSvc); err != nil {
+				if err = r.Delete(ctx, foundExtraPubSubSvc); err != nil {
 					return err
 				}
 			}
