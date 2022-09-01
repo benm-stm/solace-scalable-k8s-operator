@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,20 +26,16 @@ import (
 
 // SolaceScalableSpec defines the desired state of SolaceScalable
 type Container struct {
-	Image  string `json:"image,omitempty"`
-	Name   string `json:"name,omitempty"`
-	Env    []Env  `json:"env,omitempty"`
-	Volume Volume `json:"volume,omitempty"`
+	Image  string          `json:"image,omitempty"`
+	Name   string          `json:"name,omitempty"`
+	Env    []corev1.EnvVar `json:"env,omitempty"`
+	Volume Volume          `json:"volume,omitempty"`
 }
 type Volume struct {
 	Name          string `json:"name,omitempty"`
 	Size          string `json:"size,omitempty"`
 	HostPath      string `json:"hostPath,omitempty"`
 	ReclaimPolicy string `json:"reclaimPolicy,omitempty"`
-}
-type Env struct {
-	Name  string `json:"name,omitempty"`
-	Value string `json:"value,omitempty"`
 }
 type SolaceScalableSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster

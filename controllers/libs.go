@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -37,25 +36,16 @@ func AsSha256(o interface{}) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func Unique(intSlice []int32) []int32 {
+func UniqueAndNonZero(intSlice []int32) []int32 {
 	keys := make(map[int32]bool)
 	list := []int32{}
 	for _, entry := range intSlice {
-		if _, value := keys[entry]; !value && entry == 0 {
+		if _, value := keys[entry]; !value && entry != 0 {
 			keys[entry] = true
 			list = append(list, entry)
 		}
 	}
 	return list
-}
-
-func GetEnv(s *scalablev1alpha1.SolaceScalable, selector string) string {
-	for e := 0; e < int(len(s.Spec.Container.Env)); e++ {
-		if s.Spec.Container.Env[e].Name == selector {
-			return s.Spec.Container.Env[e].Value
-		}
-	}
-	return ""
 }
 
 func CleanJsonResponse(s string, r string) []int32 {
@@ -77,6 +67,7 @@ func CallSolaceSempApi(
 	s *scalablev1alpha1.SolaceScalable,
 	apiPath string,
 	ctx context.Context,
+	solaceAdminPassword string,
 ) (string, bool, error) {
 	log := log.FromContext(ctx)
 	var retErr error
@@ -88,7 +79,7 @@ func CallSolaceSempApi(
 		if err != nil {
 			retErr = err
 		}
-		req.SetBasicAuth("admin", GetEnv(s, "username_admin_password"))
+		req.SetBasicAuth("admin", solaceAdminPassword)
 		resp, err := client.Do(req)
 		if err != nil {
 			retErr = err
@@ -115,13 +106,4 @@ func Contains(s []string, str string) bool {
 	}
 
 	return false
-}
-
-func EnvVars(s *scalablev1alpha1.SolaceScalableSpec) []corev1.EnvVar {
-	var env []corev1.EnvVar
-
-	for _, s := range s.Container.Env {
-		env = append(env, corev1.EnvVar{Name: s.Name, Value: s.Value})
-	}
-	return env
 }

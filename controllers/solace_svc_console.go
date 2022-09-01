@@ -11,9 +11,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func SvcConsole(s *scalablev1alpha1.SolaceScalable, counter int) *corev1.Service {
+func NewSvcConsole(
+	s *scalablev1alpha1.SolaceScalable,
+	counter int,
+) *corev1.Service {
 	//labels := labels(s)
-	name := s.Name + "-" + strconv.Itoa(counter)
+	name := s.Name + "-" +
+		strconv.Itoa(counter)
 	selector := map[string]string{
 		"statefulset.kubernetes.io/pod-name": name,
 	}
@@ -35,13 +39,23 @@ func SvcConsole(s *scalablev1alpha1.SolaceScalable, counter int) *corev1.Service
 }
 
 //create console service
-func (r *SolaceScalableReconciler) CreateSolaceConsoleSvc(svc *corev1.Service, ctx context.Context) error {
+func (r *SolaceScalableReconciler) CreateSolaceConsoleSvc(
+	svc *corev1.Service,
+	ctx context.Context,
+) error {
 	// Check if the console svc already exists
 	log := log.FromContext(ctx)
 	foundSvc := &corev1.Service{}
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, foundSvc); err != nil {
+	if err := r.Get(
+		ctx,
+		types.NamespacedName{
+			Name:      svc.Name,
+			Namespace: svc.Namespace,
+		},
+		foundSvc,
+	); err != nil {
 		log.Info("Creating Solace Console Svc", svc.Namespace, svc.Name)
-		if err = r.Create(context.TODO(), svc); err != nil {
+		if err = r.Create(ctx, svc); err != nil {
 			return err
 		}
 	}
@@ -54,19 +68,29 @@ func (r *SolaceScalableReconciler) DeleteSolaceConsoleSvc(
 	ctx context.Context,
 ) error {
 	log := log.FromContext(ctx)
-	i := int(solaceScalable.Spec.Replicas)
-	// loop indefinitely until not finding an existi_ng console service
-	for true {
-		svc := SvcConsole(solaceScalable, i)
+	counter := int(solaceScalable.Spec.Replicas)
+	nbSvcToCheck := 5 + counter
+	// loop indefinitely until not finding 5 existing console service
+	for {
+		svc := NewSvcConsole(solaceScalable, counter)
 		foundExtraSvc := &corev1.Service{}
-		if err := r.Get(ctx, types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, foundExtraSvc); err != nil {
-			break
+		if err := r.Get(
+			ctx,
+			types.NamespacedName{
+				Name:      svc.Name,
+				Namespace: svc.Namespace,
+			},
+			foundExtraSvc,
+		); err != nil {
+			counter++
 		} else {
 			log.Info("Delete Solace Console Service", svc.Namespace, svc.Name)
 			if err = r.Delete(ctx, foundExtraSvc); err != nil {
 				return err
 			}
-			i++
+		}
+		if counter == nbSvcToCheck {
+			break
 		}
 	}
 	return nil

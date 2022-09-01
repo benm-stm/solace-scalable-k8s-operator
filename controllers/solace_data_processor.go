@@ -7,8 +7,6 @@ import (
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 )
 
-var blacklistedClientUsernames = []string{"#client-username"}
-
 // message vpns response struct
 type SolaceMsgVpnResp struct {
 	MsgVpnName                             string `json:"msgVpnName"`
@@ -48,11 +46,11 @@ type SolaceMergedResps struct {
 
 func GetSolaceOpenPorts(s *scalablev1alpha1.SolaceScalable, ctx context.Context) ([]int32, error) {
 	var ports []int32
-	bodyText, _, err := CallSolaceSempApi(s, "/config/msgVpns", ctx)
+	bodyText, _, err := CallSolaceSempApi(s, "/config/msgVpns", ctx, solaceAdminPassword)
 	if err != nil {
 		return nil, err
 	}
-	ports = Unique(CleanJsonResponse(bodyText, ".*Port\":(.*),"))
+	ports = UniqueAndNonZero(CleanJsonResponse(bodyText, ".*Port\":(.*),"))
 	return ports, nil
 }
 
@@ -66,6 +64,7 @@ func GetEnabledSolaceMsgVpns(
 			"msgVpnName,enabled,*Port"+
 			"&where=enabled==true",
 		ctx,
+		solaceAdminPassword,
 	)
 	if err != nil {
 		return SolaceMsgVpnsResp{}, err
@@ -94,6 +93,7 @@ func (m *SolaceMsgVpnsResp) GetSolaceClientUsernames(
 				"clientUsername,enabled,msgVpnName"+
 				"&where=clientUsername!=*client-username",
 			ctx,
+			solaceAdminPassword,
 		)
 		if err != nil {
 			return SolaceClientUsernamesResp{}, err
