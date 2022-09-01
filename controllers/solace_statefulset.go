@@ -13,7 +13,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func NewStatefulset(s *scalablev1alpha1.SolaceScalable, labels map[string]string) *v1.StatefulSet {
+func NewStatefulset(
+	s *scalablev1alpha1.SolaceScalable,
+	labels map[string]string,
+) *v1.StatefulSet {
 	name := s.Name
 	storageClassName := s.Spec.PvClass
 	if s.Spec.PvClass == "localManual" {
@@ -146,9 +149,6 @@ func NewStatefulset(s *scalablev1alpha1.SolaceScalable, labels map[string]string
 				},
 			},
 		},
-		Status: v1.StatefulSetStatus{
-			Replicas: s.Spec.Replicas,
-		},
 	}
 }
 
@@ -158,7 +158,14 @@ func (r *SolaceScalableReconciler) CreateStatefulSet(
 	ctx context.Context,
 ) error {
 	log := log.FromContext(ctx)
-	if err := r.Get(ctx, types.NamespacedName{Name: ss.Name, Namespace: ss.Namespace}, &v1.StatefulSet{}); err != nil {
+	if err := r.Get(
+		ctx,
+		types.NamespacedName{
+			Name:      ss.Name,
+			Namespace: ss.Namespace,
+		},
+		&v1.StatefulSet{},
+	); err != nil {
 		log.Info("Creating Statefulset", ss.Namespace, ss.Name)
 		if err = r.Create(ctx, ss); err != nil {
 			return err
@@ -175,7 +182,7 @@ func (r *SolaceScalableReconciler) UpdateStatefulSet(
 ) error {
 	log := log.FromContext(ctx)
 	newMarshal, _ := json.Marshal(ss.Spec)
-	if len(*hashStore) == 0 {
+	if (*hashStore)[ss.Name] == "" {
 		(*hashStore)[ss.Name] = AsSha256(newMarshal)
 	} else if AsSha256(newMarshal) != (*hashStore)[ss.Name] {
 		log.Info("Updating StatefulSet", ss.Namespace, ss.Name)
