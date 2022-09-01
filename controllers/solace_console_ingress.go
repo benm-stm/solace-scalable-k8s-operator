@@ -5,14 +5,13 @@ import (
 	"strconv"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
-	netv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func IngressConsole(
+func NewIngressConsole(
 	s *scalablev1alpha1.SolaceScalable,
 	labels map[string]string,
 ) *v1.Ingress {
@@ -68,15 +67,21 @@ func CreateIngressConsoleRules(s *scalablev1alpha1.SolaceScalable) []v1.IngressR
 
 func (r *SolaceScalableReconciler) CreateSolaceConsoleIngress(
 	solaceScalable *scalablev1alpha1.SolaceScalable,
+	ingConsole *v1.Ingress,
 	ctx context.Context,
 ) error {
 	//create ingress console services
 	log := log.FromContext(ctx)
-	foundIngress := &netv1.Ingress{}
-	ingConsole := IngressConsole(solaceScalable, Labels(solaceScalable))
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: ingConsole.Name, Namespace: ingConsole.Namespace}, foundIngress); err != nil {
+	foundIngress := &v1.Ingress{}
+	if err := r.Get(ctx,
+		types.NamespacedName{
+			Name:      ingConsole.Name,
+			Namespace: ingConsole.Namespace,
+		},
+		foundIngress,
+	); err != nil {
 		log.Info("Creating Solace Console Ingress", ingConsole.Namespace, ingConsole.Name)
-		if err = r.Create(context.TODO(), ingConsole); err != nil {
+		if err = r.Create(ctx, ingConsole); err != nil {
 			return err
 		}
 	}

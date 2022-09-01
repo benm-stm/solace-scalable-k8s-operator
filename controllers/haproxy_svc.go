@@ -12,7 +12,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func SvcHaproxy(
+// get already existing default haproxy svc and add ports
+func NewSvcHaproxy(
 	s *scalablev1alpha1.SolaceScalable,
 	ports []corev1.ServicePort,
 	d map[string]string,
@@ -73,13 +74,16 @@ func (r *SolaceScalableReconciler) GetExistingHaProxySvc(
 	log := log.FromContext(ctx)
 	FoundHaproxySvc := &corev1.Service{}
 	if err := r.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{
 			Namespace: solaceScalable.Spec.Haproxy.Namespace,
 			Name:      serviceName,
 		}, FoundHaproxySvc,
 	); err != nil {
-		log.Info("HAProxy service is not found", FoundHaproxySvc.Namespace, FoundHaproxySvc.Name)
+		log.Info("HAProxy service is not found",
+			FoundHaproxySvc.Namespace,
+			FoundHaproxySvc.Name,
+		)
 		return nil, err
 	}
 	return FoundHaproxySvc, nil
@@ -93,17 +97,22 @@ func (r *SolaceScalableReconciler) UpdateHAProxySvc(
 	log := log.FromContext(ctx)
 	// sort the data (ports cause marshall to fail)
 	sort.Slice(FoundHaproxySvc.Spec.Ports, func(i, j int) bool {
-		return FoundHaproxySvc.Spec.Ports[i].Name < FoundHaproxySvc.Spec.Ports[j].Name
+		return FoundHaproxySvc.Spec.Ports[i].Name <
+			FoundHaproxySvc.Spec.Ports[j].Name
 	})
 	portsMarshal, _ := json.Marshal(FoundHaproxySvc.Spec.Ports)
-	if len(*hashStore) == 0 {
+	if (*hashStore)[FoundHaproxySvc.Name] == "" {
 		(*hashStore)[FoundHaproxySvc.Name] = AsSha256(portsMarshal)
 	} else if AsSha256(portsMarshal) != (*hashStore)[FoundHaproxySvc.Name] {
-		log.Info("Updating Haproxy Svc", FoundHaproxySvc.Namespace, FoundHaproxySvc.Name)
-		(*hashStore)[FoundHaproxySvc.Name] = AsSha256(portsMarshal)
-		if err := r.Update(context.TODO(), FoundHaproxySvc); err != nil {
+		log.Info("Updating Haproxy Svc",
+			FoundHaproxySvc.Namespace,
+			FoundHaproxySvc.Name,
+		)
+		if err := r.Update(ctx, FoundHaproxySvc); err != nil {
 			return err
 		}
+		//update hash to not trig update if conf has not changed
+		(*hashStore)[FoundHaproxySvc.Name] = AsSha256(portsMarshal)
 	}
 	return nil
 }

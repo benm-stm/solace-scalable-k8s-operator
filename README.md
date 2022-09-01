@@ -24,6 +24,12 @@ helm install --namespace ingress-controller --create-namespace --set controller.
 
 helm install --namespace ingress-controller --create-namespace --set controller.ingressClass='haproxy-sub',controller.ingressClassResource.name='haproxy-sub',controller.replicaCount=1,controller.extraArgs={'--configmap-tcp-services=solacescalable/solacescalable-sub-tcp-ingress'} haproxy-sub haproxytech/kubernetes-ingress
 ```
+
+#### solace admin password
+```
+kubectl create secret  -n solacescalable generic solacescalable --from-literal adminPassword=<your password>
+```
+ps: if you run it like above, don't forget to clean your shell history
 ### Running on the cluster
 1. Install Instances of Custom Resources:
 
@@ -92,6 +98,8 @@ make manifests
 
 More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
 
+## Optional kubectl-plugin
+In order to get the created pub/sub service ports in a clear manner, you can use the following kubectl [ports](https://github.com/benm-stm/kubectl-ports) 
 ## License
 
 Copyright 2022.
