@@ -51,8 +51,8 @@ func TestCreateStatefulSet(t *testing.T) {
 		ss,
 		context.TODO(),
 	)
-	if got == nil {
-		t.Errorf("got %v, wanted *v1.StatefulSet", ss)
+	if got != nil {
+		t.Errorf("got %v, wanted *v1.StatefulSet", got)
 	}
 }
 

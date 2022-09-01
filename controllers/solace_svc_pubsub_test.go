@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -18,27 +17,14 @@ func MockSvc() (
 	*SolaceScalableReconciler,
 	*corev1.Service,
 ) {
-	svc := &corev1.Service{
-		TypeMeta: metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-svc",
-			Namespace: "test-namespace",
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{},
-			Ports: []corev1.ServicePort{
-				{
-					Protocol: "http",
-					Port:     8082,
-				},
-				{
-					Protocol: "tcp",
-					Port:     8081,
-				},
-			},
-			Type: "ClusterIP",
-		},
-	}
+	svc := NewSvcPubSub(
+		&solaceScalable,
+		"testMqgVpn",
+		"testClientUsername",
+		8081,
+		"pub",
+		Labels(&solaceScalable),
+	)
 
 	// Objects to track in the fake client.
 	objs := []runtime.Object{svc}

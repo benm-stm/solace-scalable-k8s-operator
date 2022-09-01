@@ -116,7 +116,6 @@ func (r *SolaceScalableReconciler) ListPubSubSvc(
 	ctx context.Context,
 ) (*corev1.ServiceList, error) {
 	// get existing svc list
-	//foundExtraPubSubSvc := &corev1.Service{}
 	svcList := &corev1.ServiceList{}
 	listOptions := &client.ListOptions{Namespace: solaceScalable.Namespace}
 
