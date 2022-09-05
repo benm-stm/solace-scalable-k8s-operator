@@ -11,6 +11,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+/*type TcpConfigmap struct {
+	Port string
+	Svc  string
+}*/
 func NewTcpConfigmap(
 	s *scalablev1alpha1.SolaceScalable,
 	data map[string]string,
@@ -65,9 +69,11 @@ func (r *SolaceScalableReconciler) UpdateSolaceTcpConfigmap(
 		log := log.FromContext(ctx)
 		datasMarshal, _ := json.Marshal(configMap.Data)
 
-		if (*hashStore)[configMap.Name] == "" {
+		/*if (*hashStore)[configMap.Name] == "" {
 			(*hashStore)[configMap.Name] = AsSha256(datasMarshal)
-		} else if AsSha256(datasMarshal) != (*hashStore)[configMap.Name] {
+		} else */
+		if (*hashStore)[configMap.Name] == "" ||
+			AsSha256(datasMarshal) != (*hashStore)[configMap.Name] {
 			log.Info("Updating HAProxy Ingress ConfigMap", configMap.Namespace, configMap.Name)
 			if err := r.Update(ctx, configMap); err != nil {
 				return err

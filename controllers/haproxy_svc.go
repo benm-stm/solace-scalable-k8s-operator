@@ -23,12 +23,12 @@ func NewSvcHaproxy(
 	var portExist bool
 	var portIndex int
 
-	for key := range d {
+	for k := range d {
 		portExist = false
 		portIndex = 0
 		svcPort := corev1.ServicePort{}
 
-		port, err := strconv.Atoi(key)
+		port, err := strconv.Atoi(k)
 		if err == nil {
 			//check if the svc exist
 			for i, p := range ports {
@@ -40,7 +40,7 @@ func NewSvcHaproxy(
 			if !portExist {
 				//create new serviceport
 				svcPort = corev1.ServicePort{
-					Name:        "tcp-" + key,
+					Name:        "tcp-" + k,
 					Protocol:    "TCP",
 					Port:        int32(port),
 					AppProtocol: nil,
@@ -101,9 +101,10 @@ func (r *SolaceScalableReconciler) UpdateHAProxySvc(
 			FoundHaproxySvc.Spec.Ports[j].Name
 	})
 	portsMarshal, _ := json.Marshal(FoundHaproxySvc.Spec.Ports)
-	if (*hashStore)[FoundHaproxySvc.Name] == "" {
-		(*hashStore)[FoundHaproxySvc.Name] = AsSha256(portsMarshal)
-	} else if AsSha256(portsMarshal) != (*hashStore)[FoundHaproxySvc.Name] {
+	//if (*hashStore)[FoundHaproxySvc.Name] == "" {
+	//	(*hashStore)[FoundHaproxySvc.Name] = AsSha256(portsMarshal)
+	if (*hashStore)[FoundHaproxySvc.Name] == "" ||
+		AsSha256(portsMarshal) != (*hashStore)[FoundHaproxySvc.Name] {
 		log.Info("Updating Haproxy Svc",
 			FoundHaproxySvc.Namespace,
 			FoundHaproxySvc.Name,

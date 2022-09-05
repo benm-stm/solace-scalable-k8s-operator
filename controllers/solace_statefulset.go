@@ -182,9 +182,12 @@ func (r *SolaceScalableReconciler) UpdateStatefulSet(
 ) error {
 	log := log.FromContext(ctx)
 	newMarshal, _ := json.Marshal(ss.Spec)
-	if (*hashStore)[ss.Name] == "" {
+	/*if (*hashStore)[ss.Name] == "" {
 		(*hashStore)[ss.Name] = AsSha256(newMarshal)
-	} else if AsSha256(newMarshal) != (*hashStore)[ss.Name] {
+	} else */
+
+	if (*hashStore)[ss.Name] == "" ||
+		AsSha256(newMarshal) != (*hashStore)[ss.Name] {
 		log.Info("Updating StatefulSet", ss.Namespace, ss.Name)
 		if err := r.Update(ctx, ss); err != nil {
 			return err

@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"strconv"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -90,6 +89,7 @@ func TestCreatePubSubSvc(t *testing.T) {
 	}
 }
 
+/*
 func TestConstructSvcDatas(t *testing.T) {
 	smr := []SolaceMergedResp{
 		{
@@ -148,7 +148,7 @@ func TestConstructSvcDatas(t *testing.T) {
 		t.Errorf("got %v, wanted %v", gotSvcIds[0], wantedSvcId)
 	}
 }
-
+*/
 func TestListPubSubSvc(t *testing.T) {
 	r, _ := MockSvc()
 	gotSvcList, gotErr := (*r).ListPubSubSvc(

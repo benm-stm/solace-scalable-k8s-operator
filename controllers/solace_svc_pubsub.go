@@ -47,41 +47,83 @@ func NewSvcPubSub(
 	}
 }
 
+func ConstructAttrSpecificDatas(
+	s *scalablev1alpha1.SolaceScalable,
+	pubSubSvcNames *[]string,
+	cmData *map[string]string,
+	svcIds *[]SvcId,
+	ppp *Ppp,
+	oP *SolaceSvcSpec,
+	p int32,
+	nature string,
+) {
+	if p != 0 {
+		if ppp == nil ||
+			(ppp != nil && nature == ppp.PubOrSub) {
+			//fmt.Printf("%v-%v-%v-%v\n", oP.MsgVpnName, oP.ClientUsername, strconv.FormatInt(int64(p), 10), nature)
+			*pubSubSvcNames = append(
+				*pubSubSvcNames,
+				oP.MsgVpnName+"-"+
+					oP.ClientUsername+"-"+
+					strconv.FormatInt(int64(p), 10)+"-"+
+					nature,
+			)
+			(*cmData)[strconv.Itoa(int(p))] = s.Namespace + "/" +
+				oP.MsgVpnName + "-" +
+				oP.ClientUsername + "-" +
+				strconv.Itoa(int(p)) + "-" +
+				nature + ":" +
+				strconv.Itoa(int(p))
+			*svcIds = append(
+				*svcIds,
+				SvcId{
+					MsgVpnName:     oP.MsgVpnName,
+					ClientUsername: oP.ClientUsername,
+					Port:           p,
+					Nature:         nature,
+				},
+			)
+		}
+	}
+	//return pubSubSvcNames, cmData, svcIds
+}
+
 // pubsub SVC creation
 func ConstructSvcDatas(s *scalablev1alpha1.SolaceScalable,
-	pubSubOpenPorts *[]SolaceMergedResp,
+	pubSubsvcSpecs *[]SolaceSvcSpec,
 	nature string,
 ) (*[]string, *map[string]string, []SvcId) {
 	var svcIds = []SvcId{}
 	var pubSubSvcNames = []string{}
 	var cmData = map[string]string{}
-	for _, oP := range *pubSubOpenPorts {
-		for _, p := range oP.Ports {
-			if p != 0 {
-				//create pubsub SVC
-				pubSubSvcNames = append(
-					pubSubSvcNames,
-					oP.MsgVpnName+"-"+
-						oP.ClientUsername+"-"+
-						strconv.FormatInt(int64(p), 10)+"-"+
+	for _, oP := range *pubSubsvcSpecs {
+		for _, ppp := range oP.Ppp {
+			for _, p := range ppp.Port {
+				if nature == ppp.PubOrSub {
+					ConstructAttrSpecificDatas(
+						s,
+						&pubSubSvcNames,
+						&cmData,
+						&svcIds,
+						&ppp,
+						&oP,
+						p,
 						nature,
-				)
-				cmData[strconv.Itoa(int(p))] = s.Namespace + "/" +
-					oP.MsgVpnName + "-" +
-					oP.ClientUsername + "-" +
-					strconv.Itoa(int(p)) + "-" +
-					nature + ":" +
-					strconv.Itoa(int(p))
-				svcIds = append(
-					svcIds,
-					SvcId{
-						MsgVpnName:     oP.MsgVpnName,
-						ClientUsername: oP.ClientUsername,
-						Port:           p,
-						Nature:         nature,
-					},
-				)
+					)
+				}
 			}
+		}
+		for _, p := range oP.AllMsgVpnPorts {
+			ConstructAttrSpecificDatas(
+				s,
+				&pubSubSvcNames,
+				&cmData,
+				&svcIds,
+				nil,
+				&oP,
+				p,
+				nature,
+			)
 		}
 	}
 	return &pubSubSvcNames, &cmData, svcIds

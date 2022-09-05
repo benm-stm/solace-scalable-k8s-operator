@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -172,9 +173,21 @@ func (r *SolaceScalableReconciler) Reconcile(
 		solaceAdminPassword,
 	); success {
 		// Get open svc pub/sub ports
+		data, _, err := CallSolaceSempApi(
+			solaceScalable,
+			"/config/msgVpns?select="+
+				"msgVpnName,enabled,*Port"+
+				"&where=enabled==true",
+			ctx,
+			solaceAdminPassword,
+		)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
 		msgVpns, err := GetEnabledSolaceMsgVpns(
 			solaceScalable,
-			ctx,
+			data,
 		)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -186,14 +199,50 @@ func (r *SolaceScalableReconciler) Reconcile(
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		pubSubOpenPorts := clientUsernames.MergeSolaceResponses(msgVpns).Data
+
+		// get client usernames attributes
+		///SEMP/v2/config/msgVpns/test/clientUsernames/botti/attributes
+		var clientUsernamesAttributes = ClientUsernameAttributes{}
+		for _, v := range clientUsernames.Data {
+			data, _, err = CallSolaceSempApi(
+				solaceScalable,
+				"/config/msgVpns/"+v.MsgVpnName+
+					"/clientUsernames/"+v.ClientUsername+
+					"/attributes",
+				ctx,
+				solaceAdminPassword,
+			)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			clientUsernameAttributes, err := GetClientUsernameAttributes(
+				solaceScalable,
+				data,
+			)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			clientUsernamesAttributes.Data = append(clientUsernamesAttributes.Data, clientUsernameAttributes.Data...)
+		}
+
+		pubSubsvcSpecs := clientUsernames.AddClientAttributes(clientUsernamesAttributes)
+		//fmt.Printf("\nsvcSpecs before ports: %v\n", pubSubsvcSpecs)
+		for ks := range pubSubsvcSpecs {
+			for _, m := range msgVpns.Data {
+				(&pubSubsvcSpecs[ks]).AddMsgVpnPorts(m)
+			}
+		}
+		fmt.Printf("\nsvcSpecs after ports: %v\n", pubSubsvcSpecs)
 
 		// Contruct pub svcs
 		pubSvcNames, cmDataPub, pubSvcsId := ConstructSvcDatas(
 			solaceScalable,
-			&pubSubOpenPorts,
+			&pubSubsvcSpecs,
 			"pub",
 		)
+		/*fmt.Printf("\ncmDataPub : %v", cmDataPub)
+		fmt.Printf("\npubSvcNames : %v", pubSvcNames)
+		fmt.Printf("\npubSvcsId : %v", pubSvcsId)*/
 
 		for _, svc := range pubSvcsId {
 			newSvcPub := NewSvcPubSub(
@@ -216,7 +265,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 		// Construct sub svc
 		subSvcNames, cmDataSub, subSvcsId := ConstructSvcDatas(
 			solaceScalable,
-			&pubSubOpenPorts,
+			&pubSubsvcSpecs,
 			"sub",
 		)
 

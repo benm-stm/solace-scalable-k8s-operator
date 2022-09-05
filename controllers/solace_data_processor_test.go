@@ -1,10 +1,6 @@
 package controllers
 
-import (
-	"context"
-	"testing"
-)
-
+/*
 func TestGetSolaceOpenPorts(t *testing.T) {
 	got, err := GetSolaceOpenPorts(
 		&solaceScalable,
@@ -15,7 +11,7 @@ func TestGetSolaceOpenPorts(t *testing.T) {
 		t.Errorf("got %v, wanted %v", got, nil)
 	}
 }
-
+*/
 /*
 func TestGetEnabledSolaceMsgVpns(t *testing.T) {
 	got, err := GetEnabledSolaceMsgVpns(
@@ -28,7 +24,7 @@ func TestGetEnabledSolaceMsgVpns(t *testing.T) {
 	}
 }
 */
-
+/*
 func TestMergeSolaceResponses(t *testing.T) {
 	var vpn = SolaceMsgVpnsResp{
 		Data: []SolaceMsgVpnResp{
@@ -61,3 +57,4 @@ func TestMergeSolaceResponses(t *testing.T) {
 		t.Errorf("got %v, wanted %v", got, nil)
 	}
 }
+*/
