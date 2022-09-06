@@ -13,34 +13,31 @@ import (
 )
 
 type SvcId struct {
+	Name           string
 	ClientUsername string
 	MsgVpnName     string
 	Port           int32
+	TargetPort     int
 	Nature         string
 }
 
 func NewSvcPubSub(
 	s *scalablev1alpha1.SolaceScalable,
-	msgVpnName string,
-	clientUsername string,
-	port int32,
-	pubSub string,
+	svc SvcId,
 	labels map[string]string,
+	portsArr []int32,
 ) *corev1.Service {
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: msgVpnName + "-" +
-				clientUsername + "-" +
-				strconv.FormatInt(int64(port), 10) + "-" +
-				pubSub,
+			Name:      svc.Name,
 			Namespace: s.Namespace,
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: labels,
 			Ports: []corev1.ServicePort{{
 				Protocol: corev1.ProtocolTCP,
-				Port:     port,
+				Port:     int32(svc.TargetPort),
 			}},
 			Type: corev1.ServiceTypeClusterIP,
 		},
@@ -56,42 +53,64 @@ func ConstructAttrSpecificDatas(
 	oP *SolaceSvcSpec,
 	p int32,
 	nature string,
+	portsArr *[]int32,
 ) {
 	if p != 0 {
+		// when ppp nil, it means that no clientusername attribues (pub/sub)
+		// are present, so make openings for all msgvpn protocol ports
 		if ppp == nil ||
 			(ppp != nil && nature == ppp.PubOrSub) {
-			//fmt.Printf("%v-%v-%v-%v\n", oP.MsgVpnName, oP.ClientUsername, strconv.FormatInt(int64(p), 10), nature)
+
+			// to check ports duplication
+			nextAvailable := NextAvailablePort(
+				*portsArr,
+				s.Spec.NetWork.StartingAvailablePorts,
+			)
+
+			svcName := oP.MsgVpnName + "-" +
+				oP.ClientUsername + "-" +
+				strconv.FormatInt(int64(nextAvailable), 10) + "-" +
+				"na" + "-" +
+				nature
+			if ppp != nil {
+				svcName = oP.MsgVpnName + "-" +
+					oP.ClientUsername + "-" +
+					strconv.FormatInt(int64(nextAvailable), 10) + "-" +
+					ppp.Protocol + "-" +
+					nature
+			}
+
 			*pubSubSvcNames = append(
 				*pubSubSvcNames,
-				oP.MsgVpnName+"-"+
-					oP.ClientUsername+"-"+
-					strconv.FormatInt(int64(p), 10)+"-"+
-					nature,
+				svcName,
 			)
-			(*cmData)[strconv.Itoa(int(p))] = s.Namespace + "/" +
-				oP.MsgVpnName + "-" +
-				oP.ClientUsername + "-" +
-				strconv.Itoa(int(p)) + "-" +
-				nature + ":" +
+
+			(*cmData)[strconv.Itoa(int(nextAvailable))] = s.Namespace + "/" +
+				svcName + ":" +
 				strconv.Itoa(int(p))
+
 			*svcIds = append(
 				*svcIds,
 				SvcId{
+					Name:           svcName,
 					MsgVpnName:     oP.MsgVpnName,
 					ClientUsername: oP.ClientUsername,
-					Port:           p,
+					Port:           nextAvailable,
+					TargetPort:     int(p),
 					Nature:         nature,
 				},
 			)
+
+			*portsArr = append(*portsArr, nextAvailable)
 		}
 	}
-	//return pubSubSvcNames, cmData, svcIds
 }
 
 // pubsub SVC creation
 func ConstructSvcDatas(s *scalablev1alpha1.SolaceScalable,
 	pubSubsvcSpecs *[]SolaceSvcSpec,
 	nature string,
+	portsArr *[]int32,
 ) (*[]string, *map[string]string, []SvcId) {
 	var svcIds = []SvcId{}
 	var pubSubSvcNames = []string{}
@@ -109,6 +128,7 @@ func ConstructSvcDatas(s *scalablev1alpha1.SolaceScalable,
 						&oP,
 						p,
 						nature,
+						portsArr,
 					)
 				}
 			}
@@ -123,6 +143,7 @@ func ConstructSvcDatas(s *scalablev1alpha1.SolaceScalable,
 				&oP,
 				p,
 				nature,
+				portsArr,
 			)
 		}
 	}

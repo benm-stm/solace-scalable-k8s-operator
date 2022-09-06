@@ -107,3 +107,23 @@ func Contains(s []string, str string) bool {
 
 	return false
 }
+
+/*func sanityzeSvcName(s string) string {
+	parts := strings.Split(s, ":")
+	return strings.Replace(parts[0], "/", "-", 1)
+}*/
+
+func NextAvailablePort(
+	ap []int32,
+	p int32,
+) int32 {
+	for i := range ap {
+		if p == ap[i] {
+			return NextAvailablePort(
+				ap,
+				p+1,
+			)
+		}
+	}
+	return p
+}

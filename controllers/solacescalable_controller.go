@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -232,26 +231,22 @@ func (r *SolaceScalableReconciler) Reconcile(
 				(&pubSubsvcSpecs[ks]).AddMsgVpnPorts(m)
 			}
 		}
-		fmt.Printf("\nsvcSpecs after ports: %v\n", pubSubsvcSpecs)
 
 		// Contruct pub svcs
+		pubPorts := []int32{}
 		pubSvcNames, cmDataPub, pubSvcsId := ConstructSvcDatas(
 			solaceScalable,
 			&pubSubsvcSpecs,
 			"pub",
+			&pubPorts,
 		)
-		/*fmt.Printf("\ncmDataPub : %v", cmDataPub)
-		fmt.Printf("\npubSvcNames : %v", pubSvcNames)
-		fmt.Printf("\npubSvcsId : %v", pubSvcsId)*/
 
 		for _, svc := range pubSvcsId {
 			newSvcPub := NewSvcPubSub(
 				solaceScalable,
-				svc.MsgVpnName,
-				svc.ClientUsername,
-				svc.Port,
-				svc.Nature,
+				svc,
 				solaceLabels,
+				pubPorts,
 			)
 			if err := r.CreatePubSubSvc(
 				solaceScalable,
@@ -263,20 +258,21 @@ func (r *SolaceScalableReconciler) Reconcile(
 		}
 
 		// Construct sub svc
+		subPorts := []int32{}
 		subSvcNames, cmDataSub, subSvcsId := ConstructSvcDatas(
 			solaceScalable,
 			&pubSubsvcSpecs,
 			"sub",
+			&subPorts,
 		)
 
+		//fmt.Printf("\nrobeau %v\n", subSvcsId)
 		for _, svc := range subSvcsId {
 			newSvcSub := NewSvcPubSub(
 				solaceScalable,
-				svc.MsgVpnName,
-				svc.ClientUsername,
-				svc.Port,
-				svc.Nature,
+				svc,
 				solaceLabels,
+				subPorts,
 			)
 			if err := r.CreatePubSubSvc(
 				solaceScalable,

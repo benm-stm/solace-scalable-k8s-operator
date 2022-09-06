@@ -29,3 +29,5 @@ spec:
       serviceName: haproxy-pub-kubernetes-ingress
     subscribe:
       serviceName: haproxy-sub-kubernetes-ingress
+  network:
+    startingAvailablePorts: 1025
