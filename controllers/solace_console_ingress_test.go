@@ -39,7 +39,7 @@ func MockSolaceConsoleReconciler() *SolaceScalableReconciler {
 	}
 }
 
-func TestIngressConsole(t *testing.T) {
+func TestNewIngressConsole(t *testing.T) {
 	got := NewIngressConsole(
 		&solaceScalable,
 		Labels(&solaceScalable),

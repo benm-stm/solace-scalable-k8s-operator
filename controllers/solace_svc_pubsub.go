@@ -195,7 +195,7 @@ func (r *SolaceScalableReconciler) DeletePubSubSvc(
 ) error {
 	log := log.FromContext(ctx)
 	for _, s := range svcList.Items {
-		if !StringInSlice(s.Name, *pubSubSvcNames) && s.Spec.Ports[0].Port != 8080 {
+		if !IsItInSlice(s.Name, *pubSubSvcNames) && s.Spec.Ports[0].Port != 8080 {
 			foundExtraPubSubSvc := &corev1.Service{}
 			if err := r.Get(
 				ctx,

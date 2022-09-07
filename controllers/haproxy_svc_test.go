@@ -41,7 +41,7 @@ func MockHaproxyReconciler() (
 	}, objs, haproxy
 }
 
-/*func TestSvcHaproxy(t *testing.T) {
+func TestNewSvcHaproxy(t *testing.T) {
 	got := NewSvcHaproxy(
 		&solaceScalable,
 		ports,
@@ -53,7 +53,7 @@ func MockHaproxyReconciler() (
 	if got == nil {
 		t.Errorf("got %v, wanted %v", got, nil)
 	}
-}*/
+}
 
 func TestGetDefaultHaProxyConf(t *testing.T) {
 	got := GetDefaultHaProxyConf(ports)

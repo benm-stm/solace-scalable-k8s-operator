@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"encoding/json"
 	"strings"
 
@@ -72,6 +71,10 @@ type protocols struct {
 	ServiceRestIncomingTlsListenPort       string `json:"restIncomingTls"`
 }
 
+/*
+returns the correspondance of protocol given by the clientusername attributes
+inside solace
+*/
 func protocolsList() protocols {
 	return protocols{
 		ServiceAmqpPlainTextListenPort:         "amqp",
@@ -84,6 +87,7 @@ func protocolsList() protocols {
 	}
 }
 
+//returns the solace's enabled msgVpns in Json format
 func GetEnabledSolaceMsgVpns(
 	s *scalablev1alpha1.SolaceScalable,
 	data string,
@@ -94,38 +98,27 @@ func GetEnabledSolaceMsgVpns(
 	if err := json.Unmarshal(textBytes, &resp); err != nil {
 		return SolaceMsgVpnsResp{}, err
 	}
-	//fmt.Printf("GetEnabledSolaceMsgVpns : %v\n", resp)
 	return resp, nil
 }
 
+//returns the solace's clientUsernames per msgVpn in Json format
 func (m *SolaceMsgVpnsResp) GetSolaceClientUsernames(
 	s *scalablev1alpha1.SolaceScalable,
-	ctx context.Context,
+	data string,
 ) (SolaceClientUsernamesResp, error) {
-	temp := SolaceClientUsernamesResp{}
+	//temp := SolaceClientUsernamesResp{}
 	resp := SolaceClientUsernamesResp{}
-	for _, m := range m.Data {
-		//ignore #client-username
-		text, _, err := CallSolaceSempApi(
-			s, "/config/msgVpns/"+m.MsgVpnName+
-				"/clientUsernames?select="+
-				"clientUsername,enabled,msgVpnName"+
-				"&where=clientUsername!=*client-username",
-			ctx,
-			solaceAdminPassword,
-		)
-		if err != nil {
-			return SolaceClientUsernamesResp{}, err
-		}
-		textBytes := []byte(text)
-		err = json.Unmarshal(textBytes, &temp)
-		if err != nil {
-			return SolaceClientUsernamesResp{}, err
-		}
-
-		resp.Data = append(resp.Data, temp.Data...)
+	textBytes := []byte(data)
+	err := json.Unmarshal(textBytes, &resp)
+	if err != nil {
+		return SolaceClientUsernamesResp{}, err
 	}
-	//fmt.Printf("GetSolaceClientUsernames : %v\n", resp)
+	// sanityze clientUsername
+	for i := range resp.Data {
+		resp.Data[i].ClientUsername =
+			SanityzeForSvcName(resp.Data[i].ClientUsername)
+	}
+
 	return resp, nil
 }
 
@@ -138,7 +131,7 @@ func GetClientUsernameAttributes(
 	if err := json.Unmarshal(textBytes, &resp); err != nil {
 		return ClientUsernameAttributes{}, err
 	}
-	//fmt.Printf("GetClientUsernameAttributes : %v\n", resp)
+
 	return resp, nil
 }
 
@@ -174,8 +167,16 @@ func (s *SolaceSvcSpec) AddMsgVpnPorts(m SolaceMsgVpnResp) {
 		protocols := protocolsList()
 		for k, v := range s.Ppp {
 			protocolsExist = true
-			s.Ppp[k].Port = append(s.Ppp[k].Port, int32(GetMsgVpnProtocolPort(m, v.Protocol, protocols)))
-			//fmt.Printf("vpn :%v\nprotocol :%v\nnature :%v\n\n", m.MsgVpnName, v.Protocol, v.PubOrSub)
+			s.Ppp[k].Port = append(
+				s.Ppp[k].Port,
+				int32(
+					GetMsgVpnProtocolPort(
+						m,
+						v.Protocol,
+						protocols,
+					),
+				),
+			)
 		}
 
 		if !protocolsExist {
@@ -217,7 +218,3 @@ func GetMsgVpnProtocolPort(m SolaceMsgVpnResp, s string, p protocols) int {
 	}
 	return 0
 }
-
-//GetEnabledSolaceMsgVpns : {[{default 5672 5671 1883 8883 8443 8000 9000 9443} {test 0 0 1884 1885 0 1886 0 0}]}
-//GetSolaceClientUsernames : {[{default true default   []} {botti true test   []} {default true test   []}]}
-//MergeSolaceResponses : {[{default default [5672 5671 1883 8883 8443 8000 9000 9443]} {test botti [0 0 1884 1885 0 1886 0 0]} {test default [0 0 1884 1885 0 1886 0 0]}]}

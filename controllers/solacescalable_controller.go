@@ -191,16 +191,36 @@ func (r *SolaceScalableReconciler) Reconcile(
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		clientUsernames, err := msgVpns.GetSolaceClientUsernames(
-			solaceScalable,
-			ctx,
-		)
-		if err != nil {
-			return reconcile.Result{}, err
+
+		// Get solace clientUsernames
+		clientUsernames := SolaceClientUsernamesResp{}
+		for _, m := range msgVpns.Data {
+			data, _, err = CallSolaceSempApi(
+				solaceScalable,
+				"/config/msgVpns/"+m.MsgVpnName+
+					"/clientUsernames?select="+
+					"clientUsername,enabled,msgVpnName"+
+					"&where=clientUsername!=*client-username",
+				ctx,
+				solaceAdminPassword,
+			)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
+			clientUsernamesTemp, err := msgVpns.GetSolaceClientUsernames(
+				solaceScalable,
+				data,
+			)
+
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
+			clientUsernames.Data = append(clientUsernames.Data, clientUsernamesTemp.Data...)
 		}
 
 		// get client usernames attributes
-		///SEMP/v2/config/msgVpns/test/clientUsernames/botti/attributes
 		var clientUsernamesAttributes = ClientUsernameAttributes{}
 		for _, v := range clientUsernames.Data {
 			data, _, err = CallSolaceSempApi(
