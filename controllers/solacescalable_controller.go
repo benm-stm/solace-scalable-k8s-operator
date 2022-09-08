@@ -266,7 +266,6 @@ func (r *SolaceScalableReconciler) Reconcile(
 				solaceScalable,
 				svc,
 				solaceLabels,
-				pubPorts,
 			)
 			if err := r.CreatePubSubSvc(
 				solaceScalable,
@@ -292,7 +291,6 @@ func (r *SolaceScalableReconciler) Reconcile(
 				solaceScalable,
 				svc,
 				solaceLabels,
-				subPorts,
 			)
 			if err := r.CreatePubSubSvc(
 				solaceScalable,

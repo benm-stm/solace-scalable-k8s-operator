@@ -25,7 +25,6 @@ func NewSvcPubSub(
 	s *scalablev1alpha1.SolaceScalable,
 	svc SvcId,
 	labels map[string]string,
-	portsArr []int32,
 ) *corev1.Service {
 
 	return &corev1.Service{
@@ -61,10 +60,15 @@ func ConstructAttrSpecificDatas(
 		if ppp == nil ||
 			(ppp != nil && nature == ppp.PubOrSub) {
 
-			// to check ports duplication
+			// if no default value given to startingAvailablePorts
+			// we will attribute the 1st available port offered by the system
+			beginningPort := int32(1024)
+			if s.Spec.NetWork.StartingAvailablePorts != 0 {
+				beginningPort = s.Spec.NetWork.StartingAvailablePorts
+			}
 			nextAvailable := NextAvailablePort(
 				*portsArr,
-				s.Spec.NetWork.StartingAvailablePorts,
+				beginningPort,
 			)
 
 			svcName := oP.MsgVpnName + "-" +
