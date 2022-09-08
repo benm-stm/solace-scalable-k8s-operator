@@ -42,8 +42,6 @@ type SolaceScalableReconciler struct {
 var hashStore = make(map[string]string)
 var solaceAdminPassword string
 
-//solaceAdminPassword =
-
 //+kubebuilder:rbac:groups=scalable.solace.io,resources=solacescalables,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=scalable.solace.io,resources=solacescalables/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=scalable.solace.io,resources=solacescalables/finalizers,verbs=update
@@ -245,7 +243,6 @@ func (r *SolaceScalableReconciler) Reconcile(
 		}
 
 		pubSubsvcSpecs := clientUsernames.AddClientAttributes(clientUsernamesAttributes)
-		//fmt.Printf("\nsvcSpecs before ports: %v\n", pubSubsvcSpecs)
 		for ks := range pubSubsvcSpecs {
 			for _, m := range msgVpns.Data {
 				(&pubSubsvcSpecs[ks]).AddMsgVpnPorts(m)

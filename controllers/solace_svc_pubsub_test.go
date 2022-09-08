@@ -180,7 +180,6 @@ func TestConstructSvcDatas(t *testing.T) {
 	}
 	nature := "pub"
 	ports := []int32{1024, 1027}
-	//p := int32(1026)
 
 	pubSubSvcNames, cmData, svcIds := ConstructSvcDatas(
 		&solaceScalable,
@@ -252,7 +251,6 @@ func TestDeletePubSubSvc(t *testing.T) {
 		foundSvc,
 	)
 
-	//t.Errorf("list %v, \n\nget  %v\n\n\n\n", svcList.Items, foundSvc)
 	if errList == nil || gotErr == nil {
 		if errGet == nil {
 			t.Errorf("got %v, wanted  %v", foundSvc, nil)

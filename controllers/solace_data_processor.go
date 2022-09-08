@@ -106,7 +106,6 @@ func (m *SolaceMsgVpnsResp) GetSolaceClientUsernames(
 	s *scalablev1alpha1.SolaceScalable,
 	data string,
 ) (SolaceClientUsernamesResp, error) {
-	//temp := SolaceClientUsernamesResp{}
 	resp := SolaceClientUsernamesResp{}
 	textBytes := []byte(data)
 	err := json.Unmarshal(textBytes, &resp)

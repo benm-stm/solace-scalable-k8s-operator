@@ -101,8 +101,7 @@ func (r *SolaceScalableReconciler) UpdateHAProxySvc(
 			FoundHaproxySvc.Spec.Ports[j].Name
 	})
 	portsMarshal, _ := json.Marshal(FoundHaproxySvc.Spec.Ports)
-	//if (*hashStore)[FoundHaproxySvc.Name] == "" {
-	//	(*hashStore)[FoundHaproxySvc.Name] = AsSha256(portsMarshal)
+
 	if (*hashStore)[FoundHaproxySvc.Name] == "" ||
 		AsSha256(portsMarshal) != (*hashStore)[FoundHaproxySvc.Name] {
 		log.Info("Updating Haproxy Svc",
