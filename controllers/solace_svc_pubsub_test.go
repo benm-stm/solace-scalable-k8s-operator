@@ -107,12 +107,10 @@ func TestConstructAttrSpecificDatas(t *testing.T) {
 		{
 			MsgVpnName:     "test",
 			ClientUsername: "test",
-			Ppp: []Ppp{
+			Pppo: []Pppo{
 				{
 					Protocol: "mqtt",
-					Port: []int32{
-						int32(1026),
-					},
+					Port:     int32(1026),
 					PubOrSub: "pub",
 				},
 			},
@@ -128,7 +126,7 @@ func TestConstructAttrSpecificDatas(t *testing.T) {
 		&pubSubSvcNames,
 		&cmData,
 		&svcIds,
-		&oP[0].Ppp[0],
+		&oP[0].Pppo[0],
 		&oP[0],
 		p,
 		"pub",
@@ -139,7 +137,7 @@ func TestConstructAttrSpecificDatas(t *testing.T) {
 	wantedSvcName := oP[0].MsgVpnName + "-" +
 		oP[0].ClientUsername + "-" +
 		"1025-" +
-		oP[0].Ppp[0].Protocol + "-" +
+		oP[0].Pppo[0].Protocol + "-" +
 		nature
 
 	if pubSubSvcNames[0] != wantedSvcName {
@@ -166,12 +164,10 @@ func TestConstructSvcDatas(t *testing.T) {
 		{
 			MsgVpnName:     "test",
 			ClientUsername: "test",
-			Ppp: []Ppp{
+			Pppo: []Pppo{
 				{
 					Protocol: "mqtt",
-					Port: []int32{
-						int32(1026),
-					},
+					Port:     int32(1026),
 					PubOrSub: "pub",
 				},
 			},
@@ -192,7 +188,7 @@ func TestConstructSvcDatas(t *testing.T) {
 	wantedSvcName := oP[0].MsgVpnName + "-" +
 		oP[0].ClientUsername + "-" +
 		"1025-" +
-		oP[0].Ppp[0].Protocol + "-" +
+		oP[0].Pppo[0].Protocol + "-" +
 		nature
 
 	if (*pubSubSvcNames)[0] != wantedSvcName {
@@ -202,15 +198,15 @@ func TestConstructSvcDatas(t *testing.T) {
 	//check configmap Datas
 	wantedCmData := solaceScalable.Namespace + "/" +
 		wantedSvcName + ":" +
-		strconv.Itoa(int(oP[0].Ppp[0].Port[0]))
+		strconv.Itoa(int(oP[0].Pppo[0].Port))
 
 	if (*cmData)["1025"] != wantedCmData {
 		t.Errorf("got %v, wanted %v", (*cmData)["1025"], wantedCmData)
 	}
 
 	//check svcId
-	if svcIds[0].TargetPort != int(oP[0].Ppp[0].Port[0]) {
-		t.Errorf("got %v, wanted %v", svcIds[0].TargetPort, int(oP[0].Ppp[0].Port[0]))
+	if svcIds[0].TargetPort != int(oP[0].Pppo[0].Port) {
+		t.Errorf("got %v, wanted %v", svcIds[0].TargetPort, int(oP[0].Pppo[0].Port))
 	}
 }
 

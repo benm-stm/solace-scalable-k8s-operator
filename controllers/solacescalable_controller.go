@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -242,12 +243,18 @@ func (r *SolaceScalableReconciler) Reconcile(
 			clientUsernamesAttributes.Data = append(clientUsernamesAttributes.Data, clientUsernameAttributes.Data...)
 		}
 
-		pubSubsvcSpecs := clientUsernames.AddClientAttributes(clientUsernamesAttributes)
+		pubSubsvcSpecs, err := clientUsernames.AddClientAttributes(clientUsernamesAttributes)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		fmt.Printf("\npubSubsvcSpecs : %v\n", pubSubsvcSpecs)
+
 		for ks := range pubSubsvcSpecs {
 			for _, m := range msgVpns.Data {
 				(&pubSubsvcSpecs[ks]).AddMsgVpnPorts(m)
 			}
 		}
+		fmt.Printf("\npubSubsvcSpecs with ports : %v\n", pubSubsvcSpecs)
 
 		// Contruct pub svcs
 		pubPorts := []int32{}

@@ -114,9 +114,9 @@ func TestAddClientAttributes(t *testing.T) {
 			},
 		},
 	}
-	got := resp.AddClientAttributes(attr)
-	if got[0].Ppp[0].PubOrSub != "pub" {
-		t.Errorf("got %v, wanted %v", got[0].Ppp[0].PubOrSub, "pub")
+	got, err := resp.AddClientAttributes(attr)
+	if got[0].Pppo[0].PubOrSub != "pub" || err != nil {
+		t.Errorf("got %v, wanted %v", got[0].Pppo[0].PubOrSub, "pub")
 	}
 }
 
@@ -136,12 +136,10 @@ func TestAddMsgVpnPorts(t *testing.T) {
 	spec := SolaceSvcSpec{
 		MsgVpnName:     "",
 		ClientUsername: "",
-		Ppp: []Ppp{
+		Pppo: []Pppo{
 			{
 				Protocol: "mqtt",
-				Port: []int32{
-					1883,
-				},
+				Port:     1883,
 				PubOrSub: "pub",
 			},
 		},
@@ -149,8 +147,8 @@ func TestAddMsgVpnPorts(t *testing.T) {
 	}
 
 	spec.AddMsgVpnPorts(vpn)
-	if len(spec.Ppp[0].Port) != 1 {
-		t.Errorf("got %v, wanted %v", len(spec.Ppp[0].Port), 2)
+	if spec.Pppo[0].Port == 0 {
+		t.Errorf("got %v, wanted %v", spec.Pppo[0].Port, 2)
 	}
 }
 

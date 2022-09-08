@@ -43,12 +43,70 @@ func NewSvcPubSub(
 	}
 }
 
+func ConstructDatas(
+	s *scalablev1alpha1.SolaceScalable,
+	pubSubSvcNames *[]string,
+	cmData *map[string]string,
+	svcIds *[]SvcId,
+	pppo *Pppo,
+	oP *SolaceSvcSpec,
+	p int32,
+	nature string,
+	portsArr *[]int32,
+) {
+	// if no default value given to startingAvailablePorts
+	// we will attribute the 1st available port offered by the system
+	beginningPort := int32(1024)
+	if s.Spec.NetWork.StartingAvailablePorts != 0 {
+		beginningPort = s.Spec.NetWork.StartingAvailablePorts
+	}
+	nextAvailable := NextAvailablePort(
+		*portsArr,
+		beginningPort,
+	)
+
+	svcName := oP.MsgVpnName + "-" +
+		oP.ClientUsername + "-" +
+		strconv.FormatInt(int64(nextAvailable), 10) + "-" +
+		"na" + "-" +
+		nature
+	if pppo != nil {
+		svcName = oP.MsgVpnName + "-" +
+			oP.ClientUsername + "-" +
+			strconv.FormatInt(int64(nextAvailable), 10) + "-" +
+			pppo.Protocol + "-" +
+			nature
+	}
+
+	*pubSubSvcNames = append(
+		*pubSubSvcNames,
+		svcName,
+	)
+
+	(*cmData)[strconv.Itoa(int(nextAvailable))] = s.Namespace + "/" +
+		svcName + ":" +
+		strconv.Itoa(int(p))
+
+	*svcIds = append(
+		*svcIds,
+		SvcId{
+			Name:           svcName,
+			MsgVpnName:     oP.MsgVpnName,
+			ClientUsername: oP.ClientUsername,
+			Port:           nextAvailable,
+			TargetPort:     int(p),
+			Nature:         nature,
+		},
+	)
+	*portsArr = append(*portsArr, nextAvailable)
+}
+
 func ConstructAttrSpecificDatas(
 	s *scalablev1alpha1.SolaceScalable,
 	pubSubSvcNames *[]string,
 	cmData *map[string]string,
 	svcIds *[]SvcId,
-	ppp *Ppp,
+	pppo *Pppo,
 	oP *SolaceSvcSpec,
 	p int32,
 	nature string,
@@ -57,55 +115,12 @@ func ConstructAttrSpecificDatas(
 	if p != 0 {
 		// when ppp nil, it means that no clientusername attribues (pub/sub)
 		// are present, so make openings for all msgvpn protocol ports
-		if ppp == nil ||
-			(ppp != nil && nature == ppp.PubOrSub) {
-
-			// if no default value given to startingAvailablePorts
-			// we will attribute the 1st available port offered by the system
-			beginningPort := int32(1024)
-			if s.Spec.NetWork.StartingAvailablePorts != 0 {
-				beginningPort = s.Spec.NetWork.StartingAvailablePorts
+		if pppo == nil {
+			ConstructDatas(s, pubSubSvcNames, cmData, svcIds, pppo, oP, p, nature, portsArr)
+		} else if nature == pppo.PubOrSub {
+			for i := 0; i < int(pppo.OpeningsNumber); i++ {
+				ConstructDatas(s, pubSubSvcNames, cmData, svcIds, pppo, oP, p, nature, portsArr)
 			}
-			nextAvailable := NextAvailablePort(
-				*portsArr,
-				beginningPort,
-			)
-
-			svcName := oP.MsgVpnName + "-" +
-				oP.ClientUsername + "-" +
-				strconv.FormatInt(int64(nextAvailable), 10) + "-" +
-				"na" + "-" +
-				nature
-			if ppp != nil {
-				svcName = oP.MsgVpnName + "-" +
-					oP.ClientUsername + "-" +
-					strconv.FormatInt(int64(nextAvailable), 10) + "-" +
-					ppp.Protocol + "-" +
-					nature
-			}
-
-			*pubSubSvcNames = append(
-				*pubSubSvcNames,
-				svcName,
-			)
-
-			(*cmData)[strconv.Itoa(int(nextAvailable))] = s.Namespace + "/" +
-				svcName + ":" +
-				strconv.Itoa(int(p))
-
-			*svcIds = append(
-				*svcIds,
-				SvcId{
-					Name:           svcName,
-					MsgVpnName:     oP.MsgVpnName,
-					ClientUsername: oP.ClientUsername,
-					Port:           nextAvailable,
-					TargetPort:     int(p),
-					Nature:         nature,
-				},
-			)
-
-			*portsArr = append(*portsArr, nextAvailable)
 		}
 	}
 }
@@ -120,21 +135,19 @@ func ConstructSvcDatas(s *scalablev1alpha1.SolaceScalable,
 	var pubSubSvcNames = []string{}
 	var cmData = map[string]string{}
 	for _, oP := range *pubSubsvcSpecs {
-		for _, ppp := range oP.Ppp {
-			for _, p := range ppp.Port {
-				if nature == ppp.PubOrSub {
-					ConstructAttrSpecificDatas(
-						s,
-						&pubSubSvcNames,
-						&cmData,
-						&svcIds,
-						&ppp,
-						&oP,
-						p,
-						nature,
-						portsArr,
-					)
-				}
+		for _, ppp := range oP.Pppo {
+			if nature == ppp.PubOrSub {
+				ConstructAttrSpecificDatas(
+					s,
+					&pubSubSvcNames,
+					&cmData,
+					&svcIds,
+					&ppp,
+					&oP,
+					ppp.Port,
+					nature,
+					portsArr,
+				)
 			}
 		}
 		for _, p := range oP.AllMsgVpnPorts {
@@ -217,3 +230,17 @@ func (r *SolaceScalableReconciler) DeletePubSubSvc(
 	}
 	return nil
 }
+
+/*
+NAME                       TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+solacescalable-0           ClusterIP   10.97.227.171    <none>        8080/TCP   2d2h
+solacescalable-1           ClusterIP   10.108.4.216     <none>        8080/TCP   2d2h
+solacescalable-2           ClusterIP   10.103.204.8     <none>        8080/TCP   2d2h
+test-botti-1025-amqp-sub   ClusterIP   10.106.107.93    <none>        1100/TCP   2d1h
+test-botti-1025-mqtt-pub   ClusterIP   10.100.124.186   <none>        1050/TCP   2d1h
+test-botti-1026-amqp-pub   ClusterIP   10.103.2.39      <none>        1100/TCP   2d1h
+test-default-1026-na-sub   ClusterIP   10.97.8.194      <none>        1100/TCP   2d1h
+test-default-1027-na-pub   ClusterIP   10.96.209.139    <none>        1100/TCP   2d1h
+test-default-1027-na-sub   ClusterIP   10.98.35.201     <none>        1050/TCP   2d1h
+test-default-1028-na-pub   ClusterIP   10.107.172.1     <none>        1050/TCP   2d1h
+*/
