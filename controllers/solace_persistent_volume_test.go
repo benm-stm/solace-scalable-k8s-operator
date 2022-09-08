@@ -52,7 +52,7 @@ func MockPersistentVolume() (
 	}, pv
 }
 
-func TestPersistentVolume(t *testing.T) {
+func TestNewPersistentVolume(t *testing.T) {
 	got := NewPersistentVolume(&solaceScalable,
 		strconv.Itoa(int(solaceScalable.Spec.Replicas)),
 		Labels(&solaceScalable),

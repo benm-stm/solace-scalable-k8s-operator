@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -17,12 +19,17 @@ func MockSvc() (
 	*SolaceScalableReconciler,
 	*corev1.Service,
 ) {
+	svcId := SvcId{
+		Name:           "testName",
+		ClientUsername: "testClientusername",
+		MsgVpnName:     "testMsgVpn",
+		Port:           1024,
+		TargetPort:     1025,
+		Nature:         "pub",
+	}
 	svc := NewSvcPubSub(
 		&solaceScalable,
-		"testMqgVpn",
-		"testClientUsername",
-		8081,
-		"pub",
+		svcId,
 		Labels(&solaceScalable),
 	)
 
@@ -43,109 +50,167 @@ func MockSvc() (
 	}, svc
 }
 
-func TestSvcPubSub(t *testing.T) {
-	var wantedPort int32 = 8080
+func TestNewSvcPubSub(t *testing.T) {
+	svcId := SvcId{
+		Name:           "test",
+		ClientUsername: "test",
+		MsgVpnName:     "test",
+		Port:           1025,
+		TargetPort:     1024,
+		Nature:         "pub",
+	}
 	got := NewSvcPubSub(
 		&solaceScalable,
-		"testMsgVpn",
-		"testClientUsername",
-		wantedPort,
-		"pub",
+		svcId,
 		Labels(&solaceScalable),
 	)
-	if got.Spec.Ports[0].Port != 8080 {
-		t.Errorf("got %v, wanted %v", got, wantedPort)
+	if got.Spec.Ports[0].Port != 1024 {
+		t.Errorf("got %v, wanted %v", got.Spec.Ports[0].Port, svcId.TargetPort)
 	}
 }
 
 func TestCreatePubSubSvc(t *testing.T) {
 	r, _ := MockSvc()
-	svcId := []SvcId{
-		{
-			ClientUsername: "testClientUsername",
-			MsgVpnName:     "testMsgVpn",
-			Port:           8080,
-			Nature:         "testPub",
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "test",
 		},
-		{
-			ClientUsername: "testClientUsername2",
-			MsgVpnName:     "testMsgVpn2",
-			Port:           8081,
-			Nature:         "testPub",
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name: "",
+					Port: 1882,
+					TargetPort: intstr.IntOrString{
+						IntVal: 1883,
+					},
+					NodePort: 0,
+				},
+			},
 		},
 	}
+
 	got := (*r).CreatePubSubSvc(
 		&solaceScalable,
-		NewSvcPubSub(
-			&solaceScalable,
-			svcId[0].MsgVpnName,
-			svcId[0].ClientUsername,
-			svcId[0].Port,
-			svcId[0].Nature,
-			Labels(&solaceScalable)),
+		svc,
 		context.TODO(),
 	)
 	if got != nil {
 		t.Errorf("got %v, wanted %v", got, nil)
 	}
 }
-
-func TestConstructSvcDatas(t *testing.T) {
-	smr := []SolaceMergedResp{
+func TestConstructAttrSpecificDatas(t *testing.T) {
+	var pubSubSvcNames = []string{}
+	var cmData = map[string]string{}
+	var svcIds = []SvcId{}
+	oP := []SolaceSvcSpec{
 		{
-			MsgVpnName:     "testMsgVpn1",
-			ClientUsername: "testClientUsername1",
-			Ports:          []int32{8000, 8001},
-		},
-		{
-			MsgVpnName:     "testMsgVpn2",
-			ClientUsername: "testClientUsername2",
-			Ports:          []int32{8003, 8004},
+			MsgVpnName:     "test",
+			ClientUsername: "test",
+			Ppp: []Ppp{
+				{
+					Protocol: "mqtt",
+					Port: []int32{
+						int32(1026),
+					},
+					PubOrSub: "pub",
+				},
+			},
+			AllMsgVpnPorts: []int32{},
 		},
 	}
 	nature := "pub"
+	ports := []int32{1024, 1027}
+	p := int32(1026)
 
-	gotPubSubSvcNames, gotCmData, gotSvcIds := ConstructSvcDatas(
+	ConstructAttrSpecificDatas(
 		&solaceScalable,
-		&smr,
-		nature,
+		&pubSubSvcNames,
+		&cmData,
+		&svcIds,
+		&oP[0].Ppp[0],
+		&oP[0],
+		p,
+		"pub",
+		&ports,
 	)
-	wantedSmr := smr[0].MsgVpnName + "-" +
-		smr[0].ClientUsername + "-" +
-		strconv.Itoa(int(smr[0].Ports[0])) + "-" +
+
+	//check service name
+	wantedSvcName := oP[0].MsgVpnName + "-" +
+		oP[0].ClientUsername + "-" +
+		"1025-" +
+		oP[0].Ppp[0].Protocol + "-" +
 		nature
 
-	if (*gotPubSubSvcNames)[0] != wantedSmr {
-		t.Errorf("got %v, wanted %v", (*gotPubSubSvcNames)[0], wantedSmr)
+	if pubSubSvcNames[0] != wantedSvcName {
+		t.Errorf("got %v, wanted %v", pubSubSvcNames[0], wantedSvcName)
 	}
 
-	//	8000:test/testMsgVpn1-testClientUsername1-8000-pub:8000
-	wantedDataCm := solaceScalable.Namespace + "/" +
-		smr[0].MsgVpnName + "-" +
-		smr[0].ClientUsername + "-" +
-		strconv.Itoa(int(smr[0].Ports[0])) + "-" +
-		nature + ":" +
-		strconv.Itoa(int(smr[0].Ports[0]))
+	//check configmap Datas
+	wantedCmData := solaceScalable.Namespace + "/" +
+		wantedSvcName + ":" +
+		strconv.Itoa(int(p))
 
-	if (*gotCmData)[strconv.Itoa(int(smr[0].Ports[0]))] != wantedDataCm {
-		t.Errorf("got %v, wanted %v",
-			(*gotCmData)[strconv.Itoa(int(smr[0].Ports[0]))],
-			wantedDataCm,
-		)
+	if cmData["1025"] != wantedCmData {
+		t.Errorf("got %v, wanted %v", cmData["1025"], wantedCmData)
 	}
 
-	// {testClientUsername1 testMsgVpn1 8000 pub}
-	wantedSvcId := SvcId{
-		ClientUsername: smr[0].ClientUsername,
-		MsgVpnName:     smr[0].MsgVpnName,
-		Port:           smr[0].Ports[0],
-		Nature:         nature,
+	//check svcId
+	if svcIds[0].TargetPort != int(p) {
+		t.Errorf("got %v, wanted %v", svcIds[0].TargetPort, p)
 	}
-	if gotSvcIds[0].ClientUsername != wantedSvcId.ClientUsername ||
-		gotSvcIds[0].MsgVpnName != wantedSvcId.MsgVpnName ||
-		gotSvcIds[0].Port != wantedSvcId.Port ||
-		gotSvcIds[0].Nature != wantedSvcId.Nature {
-		t.Errorf("got %v, wanted %v", gotSvcIds[0], wantedSvcId)
+}
+
+func TestConstructSvcDatas(t *testing.T) {
+	oP := []SolaceSvcSpec{
+		{
+			MsgVpnName:     "test",
+			ClientUsername: "test",
+			Ppp: []Ppp{
+				{
+					Protocol: "mqtt",
+					Port: []int32{
+						int32(1026),
+					},
+					PubOrSub: "pub",
+				},
+			},
+			AllMsgVpnPorts: []int32{},
+		},
+	}
+	nature := "pub"
+	ports := []int32{1024, 1027}
+
+	pubSubSvcNames, cmData, svcIds := ConstructSvcDatas(
+		&solaceScalable,
+		&oP,
+		nature,
+		&ports,
+	)
+
+	//check service name
+	wantedSvcName := oP[0].MsgVpnName + "-" +
+		oP[0].ClientUsername + "-" +
+		"1025-" +
+		oP[0].Ppp[0].Protocol + "-" +
+		nature
+
+	if (*pubSubSvcNames)[0] != wantedSvcName {
+		t.Errorf("got %v, wanted %v", (*pubSubSvcNames)[0], wantedSvcName)
+	}
+
+	//check configmap Datas
+	wantedCmData := solaceScalable.Namespace + "/" +
+		wantedSvcName + ":" +
+		strconv.Itoa(int(oP[0].Ppp[0].Port[0]))
+
+	if (*cmData)["1025"] != wantedCmData {
+		t.Errorf("got %v, wanted %v", (*cmData)["1025"], wantedCmData)
+	}
+
+	//check svcId
+	if svcIds[0].TargetPort != int(oP[0].Ppp[0].Port[0]) {
+		t.Errorf("got %v, wanted %v", svcIds[0].TargetPort, int(oP[0].Ppp[0].Port[0]))
 	}
 }
 
@@ -186,7 +251,6 @@ func TestDeletePubSubSvc(t *testing.T) {
 		foundSvc,
 	)
 
-	//t.Errorf("list %v, \n\nget  %v\n\n\n\n", svcList.Items, foundSvc)
 	if errList == nil || gotErr == nil {
 		if errGet == nil {
 			t.Errorf("got %v, wanted  %v", foundSvc, nil)

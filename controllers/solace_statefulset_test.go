@@ -24,7 +24,6 @@ func MockStatefulset() (
 
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
-	//s.AddKnownTypes(corev1.SchemeGroupVersion, ss)
 
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)

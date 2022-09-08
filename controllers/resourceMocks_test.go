@@ -43,6 +43,9 @@ var solaceScalable = scalablev1alpha1.SolaceScalable{
 			Namespace: "solacescalable",
 		},
 		PvClass: "localManual",
+		NetWork: scalablev1alpha1.Network{
+			StartingAvailablePorts: 1025,
+		},
 	},
 }
 var solaceScalableSecret = corev1.Secret{

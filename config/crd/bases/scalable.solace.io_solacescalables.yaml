@@ -180,6 +180,12 @@ spec:
                         type: string
                     type: object
                 type: object
+              network:
+                properties:
+                  startingAvailablePorts:
+                    format: int32
+                    type: integer
+                type: object
               pvClass:
                 type: string
               replicas:

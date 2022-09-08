@@ -47,6 +47,7 @@ type SolaceScalableSpec struct {
 	ClusterUrl string    `json:"clusterUrl,omitempty"`
 	Haproxy    Haproxy   `json:"haproxy,omitempty"`
 	PvClass    string    `json:"pvClass,omitempty"`
+	NetWork    Network   `json:"network,omitempty"`
 }
 
 // SolaceScalableStatus defines the observed state of SolaceScalable
@@ -78,6 +79,10 @@ type Publish struct {
 }
 type Subscribe struct {
 	ServiceName string `json:"serviceName,omitempty"`
+}
+
+type Network struct {
+	StartingAvailablePorts int32 `json:"startingAvailablePorts,omitempty"`
 }
 
 //+kubebuilder:object:root=true

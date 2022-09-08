@@ -6,29 +6,31 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"regexp"
 	"strconv"
+	"strings"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+// Returns the resources Labels
 func Labels(s *scalablev1alpha1.SolaceScalable) map[string]string {
-	// Fetches and sets labels
 	return map[string]string{
 		"app": s.Name,
 	}
 }
 
-func StringInSlice(a string, list []string) bool {
+// check if element o exist in the given slice
+func IsItInSlice(o interface{}, list []string) bool {
 	for _, b := range list {
-		if b == a {
+		if b == o {
 			return true
 		}
 	}
 	return false
 }
 
+// Hash the given element with sha256
 func AsSha256(o interface{}) string {
 	h := sha256.New()
 	h.Write([]byte(fmt.Sprintf("%v", o)))
@@ -36,6 +38,7 @@ func AsSha256(o interface{}) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
+//Removes repeated int32 and 0 elements from given slice
 func UniqueAndNonZero(intSlice []int32) []int32 {
 	keys := make(map[int32]bool)
 	list := []int32{}
@@ -48,21 +51,9 @@ func UniqueAndNonZero(intSlice []int32) []int32 {
 	return list
 }
 
-func CleanJsonResponse(s string, r string) []int32 {
-	var ret []int32
-	re, _ := regexp.Compile(r)
-	submatchall := re.FindAllStringSubmatch(s, -1)
-	for _, s := range submatchall {
-		x, err := strconv.ParseInt(s[1], 10, 32)
-		if err != nil {
-			panic(err)
-		} else if x != 0 {
-			ret = append(ret, int32(x))
-		}
-	}
-	return ret
-}
-
+/*
+Calls the solace SEMPV2 Api
+*/
 func CallSolaceSempApi(
 	s *scalablev1alpha1.SolaceScalable,
 	apiPath string,
@@ -106,4 +97,46 @@ func Contains(s []string, str string) bool {
 	}
 
 	return false
+}
+
+/*
+RFC 1035 Label Names
+Some resource types require their names to follow the DNS label standard as defined in RFC 1035. This means the name must:
+    1- contain at most 63 characters
+    2- contain only lowercase alphanumeric characters or '-'
+    3- start with an alphabetic character
+    4- end with an alphanumeric character
+*/
+func SanityzeForSvcName(s string) string {
+	forbiddenChars := []string{"#", "\\", "/", ")", "(", ":"}
+	if len(s) <= 63 {
+		s = strings.ToLower(s)
+		s = strings.ReplaceAll(s, " ", "-")
+		s = strings.ReplaceAll(s, "_", "-")
+		for _, v := range forbiddenChars {
+			s = strings.ReplaceAll(s, v, "")
+		}
+	}
+	return s
+}
+
+/*
+Searches for the next available int32 based on a given array of int32, see below's example
+	- ap = [1025, 1026, 1028]
+	- p = 1026
+	- return 1027
+*/
+func NextAvailablePort(
+	ap []int32,
+	p int32,
+) int32 {
+	for i := range ap {
+		if p == ap[i] {
+			return NextAvailablePort(
+				ap,
+				p+1,
+			)
+		}
+	}
+	return p
 }

@@ -42,8 +42,6 @@ type SolaceScalableReconciler struct {
 var hashStore = make(map[string]string)
 var solaceAdminPassword string
 
-//solaceAdminPassword =
-
 //+kubebuilder:rbac:groups=scalable.solace.io,resources=solacescalables,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=scalable.solace.io,resources=solacescalables/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=scalable.solace.io,resources=solacescalables/finalizers,verbs=update
@@ -172,36 +170,98 @@ func (r *SolaceScalableReconciler) Reconcile(
 		solaceAdminPassword,
 	); success {
 		// Get open svc pub/sub ports
+		data, _, err := CallSolaceSempApi(
+			solaceScalable,
+			"/config/msgVpns?select="+
+				"msgVpnName,enabled,*Port"+
+				"&where=enabled==true",
+			ctx,
+			solaceAdminPassword,
+		)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
 		msgVpns, err := GetEnabledSolaceMsgVpns(
 			solaceScalable,
-			ctx,
+			data,
 		)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		clientUsernames, err := msgVpns.GetSolaceClientUsernames(
-			solaceScalable,
-			ctx,
-		)
-		if err != nil {
-			return reconcile.Result{}, err
+
+		// Get solace clientUsernames
+		clientUsernames := SolaceClientUsernamesResp{}
+		for _, m := range msgVpns.Data {
+			data, _, err = CallSolaceSempApi(
+				solaceScalable,
+				"/config/msgVpns/"+m.MsgVpnName+
+					"/clientUsernames?select="+
+					"clientUsername,enabled,msgVpnName"+
+					"&where=clientUsername!=*client-username",
+				ctx,
+				solaceAdminPassword,
+			)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
+			clientUsernamesTemp, err := msgVpns.GetSolaceClientUsernames(
+				solaceScalable,
+				data,
+			)
+
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
+			clientUsernames.Data = append(clientUsernames.Data, clientUsernamesTemp.Data...)
 		}
-		pubSubOpenPorts := clientUsernames.MergeSolaceResponses(msgVpns).Data
+
+		// get client usernames attributes
+		var clientUsernamesAttributes = ClientUsernameAttributes{}
+		for _, v := range clientUsernames.Data {
+			data, _, err = CallSolaceSempApi(
+				solaceScalable,
+				"/config/msgVpns/"+v.MsgVpnName+
+					"/clientUsernames/"+v.ClientUsername+
+					"/attributes",
+				ctx,
+				solaceAdminPassword,
+			)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			clientUsernameAttributes, err := GetClientUsernameAttributes(
+				solaceScalable,
+				data,
+			)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			clientUsernamesAttributes.Data = append(clientUsernamesAttributes.Data, clientUsernameAttributes.Data...)
+		}
+
+		pubSubsvcSpecs := clientUsernames.AddClientAttributes(clientUsernamesAttributes)
+		for ks := range pubSubsvcSpecs {
+			for _, m := range msgVpns.Data {
+				(&pubSubsvcSpecs[ks]).AddMsgVpnPorts(m)
+			}
+		}
 
 		// Contruct pub svcs
+		pubPorts := []int32{}
 		pubSvcNames, cmDataPub, pubSvcsId := ConstructSvcDatas(
 			solaceScalable,
-			&pubSubOpenPorts,
+			&pubSubsvcSpecs,
 			"pub",
+			&pubPorts,
 		)
 
 		for _, svc := range pubSvcsId {
 			newSvcPub := NewSvcPubSub(
 				solaceScalable,
-				svc.MsgVpnName,
-				svc.ClientUsername,
-				svc.Port,
-				svc.Nature,
+				svc,
 				solaceLabels,
 			)
 			if err := r.CreatePubSubSvc(
@@ -214,19 +274,19 @@ func (r *SolaceScalableReconciler) Reconcile(
 		}
 
 		// Construct sub svc
+		subPorts := []int32{}
 		subSvcNames, cmDataSub, subSvcsId := ConstructSvcDatas(
 			solaceScalable,
-			&pubSubOpenPorts,
+			&pubSubsvcSpecs,
 			"sub",
+			&subPorts,
 		)
 
+		//fmt.Printf("\nrobeau %v\n", subSvcsId)
 		for _, svc := range subSvcsId {
 			newSvcSub := NewSvcPubSub(
 				solaceScalable,
-				svc.MsgVpnName,
-				svc.ClientUsername,
-				svc.Port,
-				svc.Nature,
+				svc,
 				solaceLabels,
 			)
 			if err := r.CreatePubSubSvc(

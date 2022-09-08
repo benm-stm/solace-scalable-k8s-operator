@@ -13,23 +13,25 @@ PS: you have to make the same provisioning in all your solace instances in order
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 ### Prerequisists
-You need to install 2 HAproxy instances, 1 for publishing and the other for subscribing with the following params
+This operator is using [haproxytech/kubernetes-ingress](https://github.com/haproxytech/kubernetes-ingress)
+
+You need to install 2 HAproxy instances, 1 for publishing and the other for subscribing.
+
+Use below 2 helm charts with the following changes
 #### Pub Haproxy ingress for publishing
 ```
-
 helm install --namespace ingress-controller --create-namespace --set controller.ingressClass='haproxy-pub',controller.ingressClassResource.name='haproxy-pub',controller.replicaCount=1,controller.extraArgs={'--configmap-tcp-services=solacescalable/solacescalable-pub-tcp-ingress'} haproxy-pub haproxytech/kubernetes-ingress
 ```
 #### Sub Haproxy ingress for subscribing
 ```
-
 helm install --namespace ingress-controller --create-namespace --set controller.ingressClass='haproxy-sub',controller.ingressClassResource.name='haproxy-sub',controller.replicaCount=1,controller.extraArgs={'--configmap-tcp-services=solacescalable/solacescalable-sub-tcp-ingress'} haproxy-sub haproxytech/kubernetes-ingress
 ```
 
 #### solace admin password
 ```
-kubectl create secret  -n solacescalable generic solacescalable --from-literal adminPassword=<your password>
+kubectl create secret -n solacescalable generic solacescalable --from-literal adminPassword=<your password>
 ```
-ps: if you run it like above, don't forget to clean your shell history
+**NOTE**: If you run it like above, don't forget to clean your shell history
 ### Running on the cluster
 1. Install Instances of Custom Resources:
 
@@ -62,6 +64,33 @@ UnDeploy the controller to the cluster:
 ```sh
 make undeploy
 ```
+
+### Solace side configuration
+A new feature is added in version 2 which consists of using clientUsername attributes to make the necessary openings in kubernetes (Solace Services,Haproxy services (pub and sub) and tcp-configmap)
+
+
+<img src="solace-attribs.png" width="500" title="hover text">
+
+#### Attributes Name
+Can be either :
+- pub
+- sub
+
+**NOTE:** If no pub/sub attribute are present in the clientusername, then all ports for all active protocols in the message VPN are exposed for pub/sub
+
+#### Attributes Values
+Must be a list of string separated by a space.
+Here is the complete supported protocol list
+
+|Solace correspondance  	             |  Protocol     |
+|---                                     |:---:          |
+|ServiceAmqpPlainTextListenPort          |  **amqp**     |
+|ServiceAmqpTlsListenPort                |  **amqps**    |
+|ServiceMqttPlainTextListenPort          |  **mqtt**     |
+|ServiceMqttTlsListenPort                |  **mqtts**    |
+|ServiceMqttTlsWebSocketListenPort       |  **mqttws**   |
+|ServiceRestIncomingPlainTextListenPort  |  **rest**     |
+|ServiceRestIncomingTlsListenPort        |  **rests**    |
 
 ## Contributing
 in order to contribute you open a pull request and we will discuss it :)
@@ -98,6 +127,8 @@ make manifests
 
 More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
 
+## Optional kubectl-plugin
+In order to get the created pub/sub service ports in a clear manner, you can use the following kubectl [ports](https://github.com/benm-stm/kubectl-ports) 
 ## License
 
 Copyright 2022.

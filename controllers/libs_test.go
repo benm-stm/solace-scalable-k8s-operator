@@ -15,8 +15,8 @@ func TestLabels(t *testing.T) {
 	}
 }
 
-func TestStringInSlice(t *testing.T) {
-	got := StringInSlice("a", []string{"a", "b", "c"})
+func TestIsItInSlice(t *testing.T) {
+	got := IsItInSlice("a", []string{"a", "b", "c"})
 	want := true
 	if got != want {
 		t.Errorf("got %v, wanted %v", got, want)
@@ -41,16 +41,6 @@ func TestUniqueAndNonZero(t *testing.T) {
 		if v != want[i] {
 			t.Errorf("got %v, wanted %v", got, want)
 		}
-	}
-}
-
-func TestCleanJsonResponse(t *testing.T) {
-	got := CleanJsonResponse("test-Port\":8000,test2-Port\":8001",
-		".*Port\":(.*),",
-	)
-	want := []int32{8000, 8001}
-	if CheckEq(got, want) {
-		t.Errorf("got %v, wanted %v", got, want)
 	}
 }
 
@@ -87,14 +77,12 @@ func TestContains(t *testing.T) {
 	}
 }
 
-func CheckEq(a, b []int32) bool {
-	if len(a) != len(b) {
-		return false
+func TestNextAvailablePort(t *testing.T) {
+	got := NextAvailablePort([]int32{1025, 1026, 1028, 1030},
+		1025,
+	)
+	want := 1027
+	if int(got) != want {
+		t.Errorf("got %v, wanted %v", got, want)
 	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
