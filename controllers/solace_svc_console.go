@@ -15,7 +15,6 @@ func NewSvcConsole(
 	s *scalablev1alpha1.SolaceScalable,
 	counter int,
 ) *corev1.Service {
-	//labels := labels(s)
 	name := s.Name + "-" +
 		strconv.Itoa(counter)
 	selector := map[string]string{

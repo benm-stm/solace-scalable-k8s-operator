@@ -43,12 +43,73 @@ func NewSvcPubSub(
 	}
 }
 
+// Construct services informations
+func AttrSpecificDatasConstruction(
+	s *scalablev1alpha1.SolaceScalable,
+	pubSubSvcNames *[]string,
+	cmData *map[string]string,
+	svcIds *[]SvcId,
+	pppo *Pppo,
+	oP *SolaceSvcSpec,
+	p int32,
+	nature string,
+	portsArr *[]int32,
+) {
+	// if no default value given to startingAvailablePorts
+	// we will attribute the 1st available port offered by the system
+	beginningPort := int32(1024)
+	if s.Spec.NetWork.StartingAvailablePorts != 0 {
+		beginningPort = s.Spec.NetWork.StartingAvailablePorts
+	}
+	nextAvailable := NextAvailablePort(
+		*portsArr,
+		beginningPort,
+	)
+
+	svcName := oP.MsgVpnName + "-" +
+		oP.ClientUsername + "-" +
+		strconv.FormatInt(int64(nextAvailable), 10) + "-" +
+		"na" + "-" +
+		nature
+	if pppo != nil {
+		svcName = oP.MsgVpnName + "-" +
+			oP.ClientUsername + "-" +
+			strconv.FormatInt(int64(nextAvailable), 10) + "-" +
+			pppo.Protocol + "-" +
+			nature
+	}
+
+	*pubSubSvcNames = append(
+		*pubSubSvcNames,
+		svcName,
+	)
+
+	(*cmData)[strconv.Itoa(int(nextAvailable))] = s.Namespace + "/" +
+		svcName + ":" +
+		strconv.Itoa(int(p))
+
+	*svcIds = append(
+		*svcIds,
+		SvcId{
+			Name:           svcName,
+			MsgVpnName:     oP.MsgVpnName,
+			ClientUsername: oP.ClientUsername,
+			Port:           nextAvailable,
+			TargetPort:     int(p),
+			Nature:         nature,
+		},
+	)
+	*portsArr = append(*portsArr, nextAvailable)
+}
+
+// Take in charge the number of openings per protocol in the
+// clientusername attributes (pub/sub)
 func ConstructAttrSpecificDatas(
 	s *scalablev1alpha1.SolaceScalable,
 	pubSubSvcNames *[]string,
 	cmData *map[string]string,
 	svcIds *[]SvcId,
-	ppp *Ppp,
+	pppo *Pppo,
 	oP *SolaceSvcSpec,
 	p int32,
 	nature string,
@@ -57,55 +118,33 @@ func ConstructAttrSpecificDatas(
 	if p != 0 {
 		// when ppp nil, it means that no clientusername attribues (pub/sub)
 		// are present, so make openings for all msgvpn protocol ports
-		if ppp == nil ||
-			(ppp != nil && nature == ppp.PubOrSub) {
-
-			// if no default value given to startingAvailablePorts
-			// we will attribute the 1st available port offered by the system
-			beginningPort := int32(1024)
-			if s.Spec.NetWork.StartingAvailablePorts != 0 {
-				beginningPort = s.Spec.NetWork.StartingAvailablePorts
+		if pppo == nil {
+			AttrSpecificDatasConstruction(
+				s,
+				pubSubSvcNames,
+				cmData,
+				svcIds,
+				pppo,
+				oP,
+				p,
+				nature,
+				portsArr,
+			)
+		} else if nature == pppo.PubOrSub {
+			// ex: mqtt:2, here we're gonna open 2 ports for mqtt
+			for i := 0; i < int(pppo.OpeningsNumber); i++ {
+				AttrSpecificDatasConstruction(
+					s,
+					pubSubSvcNames,
+					cmData,
+					svcIds,
+					pppo,
+					oP,
+					p,
+					nature,
+					portsArr,
+				)
 			}
-			nextAvailable := NextAvailablePort(
-				*portsArr,
-				beginningPort,
-			)
-
-			svcName := oP.MsgVpnName + "-" +
-				oP.ClientUsername + "-" +
-				strconv.FormatInt(int64(nextAvailable), 10) + "-" +
-				"na" + "-" +
-				nature
-			if ppp != nil {
-				svcName = oP.MsgVpnName + "-" +
-					oP.ClientUsername + "-" +
-					strconv.FormatInt(int64(nextAvailable), 10) + "-" +
-					ppp.Protocol + "-" +
-					nature
-			}
-
-			*pubSubSvcNames = append(
-				*pubSubSvcNames,
-				svcName,
-			)
-
-			(*cmData)[strconv.Itoa(int(nextAvailable))] = s.Namespace + "/" +
-				svcName + ":" +
-				strconv.Itoa(int(p))
-
-			*svcIds = append(
-				*svcIds,
-				SvcId{
-					Name:           svcName,
-					MsgVpnName:     oP.MsgVpnName,
-					ClientUsername: oP.ClientUsername,
-					Port:           nextAvailable,
-					TargetPort:     int(p),
-					Nature:         nature,
-				},
-			)
-
-			*portsArr = append(*portsArr, nextAvailable)
 		}
 	}
 }
@@ -120,21 +159,19 @@ func ConstructSvcDatas(s *scalablev1alpha1.SolaceScalable,
 	var pubSubSvcNames = []string{}
 	var cmData = map[string]string{}
 	for _, oP := range *pubSubsvcSpecs {
-		for _, ppp := range oP.Ppp {
-			for _, p := range ppp.Port {
-				if nature == ppp.PubOrSub {
-					ConstructAttrSpecificDatas(
-						s,
-						&pubSubSvcNames,
-						&cmData,
-						&svcIds,
-						&ppp,
-						&oP,
-						p,
-						nature,
-						portsArr,
-					)
-				}
+		for _, ppp := range oP.Pppo {
+			if nature == ppp.PubOrSub {
+				ConstructAttrSpecificDatas(
+					s,
+					&pubSubSvcNames,
+					&cmData,
+					&svcIds,
+					&ppp,
+					&oP,
+					ppp.Port,
+					nature,
+					portsArr,
+				)
 			}
 		}
 		for _, p := range oP.AllMsgVpnPorts {

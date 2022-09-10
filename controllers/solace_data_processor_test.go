@@ -92,7 +92,7 @@ func TestGetClientUsernameAttributes(t *testing.T) {
 	}
 }
 
-func TestAddClientAttributes(t *testing.T) {
+func TestMergeClientAttributesInSpec(t *testing.T) {
 	attr := ClientUsernameAttributes{
 		Data: []ClientUsernameAttribute{
 			{
@@ -114,13 +114,13 @@ func TestAddClientAttributes(t *testing.T) {
 			},
 		},
 	}
-	got := resp.AddClientAttributes(attr)
-	if got[0].Ppp[0].PubOrSub != "pub" {
-		t.Errorf("got %v, wanted %v", got[0].Ppp[0].PubOrSub, "pub")
+	got, err := resp.MergeClientAttributesInSpec(attr)
+	if got[0].Pppo[0].PubOrSub != "pub" || err != nil {
+		t.Errorf("got %v, wanted %v", got[0].Pppo[0].PubOrSub, "pub")
 	}
 }
 
-func TestAddMsgVpnPorts(t *testing.T) {
+func TestMergeMsgVpnPortsInSpec(t *testing.T) {
 	vpn := SolaceMsgVpnResp{
 		MsgVpnName:                             "testMsgVpn",
 		ServiceAmqpPlainTextListenPort:         1886,
@@ -136,21 +136,19 @@ func TestAddMsgVpnPorts(t *testing.T) {
 	spec := SolaceSvcSpec{
 		MsgVpnName:     "",
 		ClientUsername: "",
-		Ppp: []Ppp{
+		Pppo: []Pppo{
 			{
 				Protocol: "mqtt",
-				Port: []int32{
-					1883,
-				},
+				Port:     1883,
 				PubOrSub: "pub",
 			},
 		},
 		AllMsgVpnPorts: []int32{},
 	}
 
-	spec.AddMsgVpnPorts(vpn)
-	if len(spec.Ppp[0].Port) != 1 {
-		t.Errorf("got %v, wanted %v", len(spec.Ppp[0].Port), 2)
+	spec.MergeMsgVpnPortsInSpec(vpn)
+	if spec.Pppo[0].Port == 0 {
+		t.Errorf("got %v, wanted %v", spec.Pppo[0].Port, 2)
 	}
 }
 
