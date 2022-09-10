@@ -217,9 +217,10 @@ func TestConstructSvcDatas(t *testing.T) {
 			ClientUsername: "test",
 			Pppo: []Pppo{
 				{
-					Protocol: "mqtt",
-					Port:     int32(1026),
-					PubOrSub: "pub",
+					Protocol:       "mqtt",
+					Port:           int32(1026),
+					PubOrSub:       "pub",
+					OpeningsNumber: 1,
 				},
 			},
 			AllMsgVpnPorts: []int32{},
