@@ -92,7 +92,7 @@ func TestGetClientUsernameAttributes(t *testing.T) {
 	}
 }
 
-func TestAddClientAttributes(t *testing.T) {
+func TestMergeClientAttributesInSpec(t *testing.T) {
 	attr := ClientUsernameAttributes{
 		Data: []ClientUsernameAttribute{
 			{
@@ -114,13 +114,13 @@ func TestAddClientAttributes(t *testing.T) {
 			},
 		},
 	}
-	got, err := resp.AddClientAttributes(attr)
+	got, err := resp.MergeClientAttributesInSpec(attr)
 	if got[0].Pppo[0].PubOrSub != "pub" || err != nil {
 		t.Errorf("got %v, wanted %v", got[0].Pppo[0].PubOrSub, "pub")
 	}
 }
 
-func TestAddMsgVpnPorts(t *testing.T) {
+func TestMergeMsgVpnPortsInSpec(t *testing.T) {
 	vpn := SolaceMsgVpnResp{
 		MsgVpnName:                             "testMsgVpn",
 		ServiceAmqpPlainTextListenPort:         1886,
@@ -146,7 +146,7 @@ func TestAddMsgVpnPorts(t *testing.T) {
 		AllMsgVpnPorts: []int32{},
 	}
 
-	spec.AddMsgVpnPorts(vpn)
+	spec.MergeMsgVpnPortsInSpec(vpn)
 	if spec.Pppo[0].Port == 0 {
 		t.Errorf("got %v, wanted %v", spec.Pppo[0].Port, 2)
 	}

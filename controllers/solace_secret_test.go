@@ -56,22 +56,20 @@ func TestGetSolaceSecret(t *testing.T) {
 }
 
 func TestGetSecretFromKey(t *testing.T) {
-	got := GetSecretFromKey(&solaceScalable,
+	got, err := GetSecretFromKey(&solaceScalable,
 		&solaceScalableSecret,
 		"testSecret",
-		context.TODO(),
 	)
-	if got == "" {
+	if got == "" || err != nil {
 		t.Errorf("got %v, wanted test", got)
 	}
 }
 
 func TestGetSecretEnvIndex(t *testing.T) {
-	got := GetSecretEnvIndex(&solaceScalable,
+	got, err := GetSecretEnvIndex(&solaceScalable,
 		"testSecret",
-		context.TODO(),
 	)
-	if got == -1 {
+	if got == -1 || err != nil {
 		t.Errorf("got %v, wanted unsigned int index", got)
 	}
 }

@@ -2,12 +2,26 @@
 A solace operator to create a scalable solace cluster under kubernetes
 
 ## Description
-The operator is used to spawn solace standalone instances using a statefulset,
-it listens to changes in the instances (added services, message-vpns, client-usernames and ports)to update resources in kubernetes.
+The operator is used to spawn solace standalone instances using a statefulset.
+It listens to changes in the solace instances via it's SEMP api to make necessary openings in kubernetes.
 
-It will automatically listens for newly opened ports and update the services and haproxy tcp connections.
+In order to make openings, it will check for :
+- Enabled message-vpn
+- non null protocol ports opened in every message-vpn service
+- Enabled client usernames (#client-username is ignored)
+- Attributes defined in each client username (precisely, pub and sub attributes)
 
-PS: you have to make the same provisioning in all your solace instances in order for this operator to work
+The operator will automatically listens for created, updated or deleted :
+- message vpns
+- client usernames
+- clientusername attributes
+
+The operator will create/update or delete :
+- ClusterIP services
+- Haproxypub and haproxysub services
+- Haproxypub and haproxysub tcp configmaps
+
+**NOTE**: You have to make the same provisioning in all your solace instances in order for this operator to work
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
@@ -66,19 +80,17 @@ make undeploy
 ```
 
 ### Solace side configuration
-A new feature is added in version 2 which consists of using clientUsername attributes to make the necessary openings in kubernetes (Solace Services,Haproxy services (pub and sub) and tcp-configmap)
-
+We are using solace's client username attributes at our favour to store operator's behavioural datas
 
 <img src="solace-attribs.png" width="500" title="hover text">
 
-#### Attributes Name
-Can be either :
-- pub
-- sub
+#### Attribute Names
+- pub: if we want the clientusername have openings in the publish haproxy ingress
+- sub: if we want the openings in subscribe haproxy
 
 **NOTE:** If no pub/sub attribute are present in the clientusername, then all ports for all active protocols in the message VPN are exposed for pub/sub
 
-#### Attributes Values
+#### Attribute Values
 Must be a list of string separated by a space.
 Here is the complete supported protocol list
 
@@ -91,6 +103,9 @@ Here is the complete supported protocol list
 |ServiceMqttTlsWebSocketListenPort       |  **mqttws**   |
 |ServiceRestIncomingPlainTextListenPort  |  **rest**     |
 |ServiceRestIncomingTlsListenPort        |  **rests**    |
+
+**NOTE**: There are cases were the clientUsername want to publish in different topics and want the connection to be split evenly across the cluster.
+In this case we added a simple mecanism to spawn n ports for the same couple (clientusername/protocol), after each protocol name just add **:n**.
 
 ## Contributing
 in order to contribute you open a pull request and we will discuss it :)
@@ -144,3 +159,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+- Support multi user running using the same protocol in the same message-vpn
+- Capability to control openings via solace attributes (more details in READMS)
+- Wider unit tests coverage

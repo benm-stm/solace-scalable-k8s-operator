@@ -43,7 +43,8 @@ func NewSvcPubSub(
 	}
 }
 
-func ConstructDatas(
+// Construct services informations
+func AttrSpecificDatasConstruction(
 	s *scalablev1alpha1.SolaceScalable,
 	pubSubSvcNames *[]string,
 	cmData *map[string]string,
@@ -101,6 +102,8 @@ func ConstructDatas(
 	*portsArr = append(*portsArr, nextAvailable)
 }
 
+// Take in charge the number of openings per protocol in the
+// clientusername attributes (pub/sub)
 func ConstructAttrSpecificDatas(
 	s *scalablev1alpha1.SolaceScalable,
 	pubSubSvcNames *[]string,
@@ -116,10 +119,31 @@ func ConstructAttrSpecificDatas(
 		// when ppp nil, it means that no clientusername attribues (pub/sub)
 		// are present, so make openings for all msgvpn protocol ports
 		if pppo == nil {
-			ConstructDatas(s, pubSubSvcNames, cmData, svcIds, pppo, oP, p, nature, portsArr)
+			AttrSpecificDatasConstruction(
+				s,
+				pubSubSvcNames,
+				cmData,
+				svcIds,
+				pppo,
+				oP,
+				p,
+				nature,
+				portsArr,
+			)
 		} else if nature == pppo.PubOrSub {
+			// ex: mqtt:2, here we're gonna open 2 ports for mqtt
 			for i := 0; i < int(pppo.OpeningsNumber); i++ {
-				ConstructDatas(s, pubSubSvcNames, cmData, svcIds, pppo, oP, p, nature, portsArr)
+				AttrSpecificDatasConstruction(
+					s,
+					pubSubSvcNames,
+					cmData,
+					svcIds,
+					pppo,
+					oP,
+					p,
+					nature,
+					portsArr,
+				)
 			}
 		}
 	}
@@ -230,17 +254,3 @@ func (r *SolaceScalableReconciler) DeletePubSubSvc(
 	}
 	return nil
 }
-
-/*
-NAME                       TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
-solacescalable-0           ClusterIP   10.97.227.171    <none>        8080/TCP   2d2h
-solacescalable-1           ClusterIP   10.108.4.216     <none>        8080/TCP   2d2h
-solacescalable-2           ClusterIP   10.103.204.8     <none>        8080/TCP   2d2h
-test-botti-1025-amqp-sub   ClusterIP   10.106.107.93    <none>        1100/TCP   2d1h
-test-botti-1025-mqtt-pub   ClusterIP   10.100.124.186   <none>        1050/TCP   2d1h
-test-botti-1026-amqp-pub   ClusterIP   10.103.2.39      <none>        1100/TCP   2d1h
-test-default-1026-na-sub   ClusterIP   10.97.8.194      <none>        1100/TCP   2d1h
-test-default-1027-na-pub   ClusterIP   10.96.209.139    <none>        1100/TCP   2d1h
-test-default-1027-na-sub   ClusterIP   10.98.35.201     <none>        1050/TCP   2d1h
-test-default-1028-na-pub   ClusterIP   10.107.172.1     <none>        1050/TCP   2d1h
-*/

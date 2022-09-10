@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -52,7 +51,7 @@ var solaceAdminPassword string
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
+// Modify the Reconcile function to compare the state specified by
 // the SolaceScalable object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
@@ -74,7 +73,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 		solaceScalable,
 	); err != nil {
 		if errors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
+			// Object not found, return. Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
 			return reconcile.Result{}, nil
 		}
@@ -88,12 +87,14 @@ func (r *SolaceScalableReconciler) Reconcile(
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		solaceAdminPassword = GetSecretFromKey(
+		solaceAdminPassword, err = GetSecretFromKey(
 			solaceScalable,
 			foundSecret,
 			"username_admin_password",
-			ctx,
 		)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	// Solace statefulset CRUD
@@ -216,7 +217,10 @@ func (r *SolaceScalableReconciler) Reconcile(
 				return reconcile.Result{}, err
 			}
 
-			clientUsernames.Data = append(clientUsernames.Data, clientUsernamesTemp.Data...)
+			clientUsernames.Data = append(
+				clientUsernames.Data,
+				clientUsernamesTemp.Data...,
+			)
 		}
 
 		// get client usernames attributes
@@ -240,21 +244,26 @@ func (r *SolaceScalableReconciler) Reconcile(
 			if err != nil {
 				return reconcile.Result{}, err
 			}
-			clientUsernamesAttributes.Data = append(clientUsernamesAttributes.Data, clientUsernameAttributes.Data...)
+			clientUsernamesAttributes.Data = append(
+				clientUsernamesAttributes.Data,
+				clientUsernameAttributes.Data...,
+			)
 		}
 
-		pubSubsvcSpecs, err := clientUsernames.AddClientAttributes(clientUsernamesAttributes)
+		// Merge client username attributes in solace spec
+		pubSubsvcSpecs, err := clientUsernames.MergeClientAttributesInSpec(
+			clientUsernamesAttributes,
+		)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		fmt.Printf("\npubSubsvcSpecs : %v\n", pubSubsvcSpecs)
 
+		// Merge message vpn ports in solace spec
 		for ks := range pubSubsvcSpecs {
 			for _, m := range msgVpns.Data {
-				(&pubSubsvcSpecs[ks]).AddMsgVpnPorts(m)
+				(&pubSubsvcSpecs[ks]).MergeMsgVpnPortsInSpec(m)
 			}
 		}
-		fmt.Printf("\npubSubsvcSpecs with ports : %v\n", pubSubsvcSpecs)
 
 		// Contruct pub svcs
 		pubPorts := []int32{}
@@ -289,7 +298,6 @@ func (r *SolaceScalableReconciler) Reconcile(
 			&subPorts,
 		)
 
-		//fmt.Printf("\nrobeau %v\n", subSvcsId)
 		for _, svc := range subSvcsId {
 			newSvcSub := NewSvcPubSub(
 				solaceScalable,

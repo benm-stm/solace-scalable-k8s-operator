@@ -99,7 +99,7 @@ func TestCreatePubSubSvc(t *testing.T) {
 		t.Errorf("got %v, wanted %v", got, nil)
 	}
 }
-func TestConstructAttrSpecificDatas(t *testing.T) {
+func TestAttrSpecificDatasConstruction(t *testing.T) {
 	var pubSubSvcNames = []string{}
 	var cmData = map[string]string{}
 	var svcIds = []SvcId{}
@@ -121,7 +121,7 @@ func TestConstructAttrSpecificDatas(t *testing.T) {
 	ports := []int32{1024, 1027}
 	p := int32(1026)
 
-	ConstructAttrSpecificDatas(
+	AttrSpecificDatasConstruction(
 		&solaceScalable,
 		&pubSubSvcNames,
 		&cmData,
@@ -129,7 +129,7 @@ func TestConstructAttrSpecificDatas(t *testing.T) {
 		&oP[0].Pppo[0],
 		&oP[0],
 		p,
-		"pub",
+		nature,
 		&ports,
 	)
 
@@ -156,6 +156,57 @@ func TestConstructAttrSpecificDatas(t *testing.T) {
 	//check svcId
 	if svcIds[0].TargetPort != int(p) {
 		t.Errorf("got %v, wanted %v", svcIds[0].TargetPort, p)
+	}
+}
+
+func TestConstructAttrSpecificDatas(t *testing.T) {
+	var pubSubSvcNames = []string{}
+	var cmData = map[string]string{}
+	var svcIds = []SvcId{}
+	oP := []SolaceSvcSpec{
+		{
+			MsgVpnName:     "test",
+			ClientUsername: "test",
+			Pppo: []Pppo{
+				{
+					Protocol:       "mqtt",
+					Port:           int32(1026),
+					PubOrSub:       "pub",
+					OpeningsNumber: 2,
+				},
+			},
+			AllMsgVpnPorts: []int32{},
+		},
+	}
+	nature := "pub"
+	ports := []int32{1024, 1027}
+	p := int32(1026)
+
+	ConstructAttrSpecificDatas(
+		&solaceScalable,
+		&pubSubSvcNames,
+		&cmData,
+		&svcIds,
+		&oP[0].Pppo[0],
+		&oP[0],
+		p,
+		nature,
+		&ports,
+	)
+
+	//check services number
+	if len(pubSubSvcNames) != int(oP[0].Pppo[0].OpeningsNumber) {
+		t.Errorf("got %v, wanted %v", len(pubSubSvcNames), int(oP[0].Pppo[0].OpeningsNumber))
+	}
+
+	//check configmaps data number
+	if len(cmData) != int(oP[0].Pppo[0].OpeningsNumber) {
+		t.Errorf("got %v, wanted %v", len(cmData), int(oP[0].Pppo[0].OpeningsNumber))
+	}
+
+	//check svcId
+	if len(svcIds) != int(oP[0].Pppo[0].OpeningsNumber) {
+		t.Errorf("got %v, wanted %v", len(svcIds), int(oP[0].Pppo[0].OpeningsNumber))
 	}
 }
 

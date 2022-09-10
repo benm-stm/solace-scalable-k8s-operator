@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -32,24 +33,26 @@ func (r *SolaceScalableReconciler) GetSolaceSecret(
 func GetSecretFromKey(s *scalablev1alpha1.SolaceScalable,
 	secret *corev1.Secret,
 	secretName string,
-	ctx context.Context,
-) string {
+) (string, error) {
+	i, err := GetSecretEnvIndex(s, secretName)
+	if err != nil {
+		return "", err
+	}
 	key := s.Spec.Container.
-		Env[GetSecretEnvIndex(s, secretName, ctx)].
+		Env[i].
 		ValueFrom.SecretKeyRef.Key
-	return string(secret.Data[key])
+	return string(secret.Data[key]), nil
 }
 
+// Gets the index of the secret in the env array
 func GetSecretEnvIndex(s *scalablev1alpha1.SolaceScalable,
 	secretName string,
-	ctx context.Context,
-) int {
-	log := log.FromContext(ctx)
+) (int, error) {
 	for i, v := range s.Spec.Container.Env {
 		if v.Name == secretName {
-			return i
+			return i, nil
 		}
 	}
-	log.Info("Secret 'username_admin_password' not declared in container Env!")
-	return -1
+	err := errors.New("secret not found")
+	return -1, err
 }

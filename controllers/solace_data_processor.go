@@ -8,7 +8,7 @@ import (
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 )
 
-// Message vpns response struct
+// Message vpn response struct
 type SolaceMsgVpnResp struct {
 	MsgVpnName                             string `json:"msgVpnName"`
 	ServiceAmqpPlainTextListenPort         int    `json:"serviceAmqpPlainTextListenPort"`
@@ -20,21 +20,26 @@ type SolaceMsgVpnResp struct {
 	ServiceRestIncomingPlainTextListenPort int    `json:"serviceRestIncomingPlainTextListenPort"`
 	ServiceRestIncomingTlsListenPort       int    `json:"serviceRestIncomingTlsListenPort"`
 }
+
+// Message vpns array response struct
 type SolaceMsgVpnsResp struct {
 	Data []SolaceMsgVpnResp `json:"data"`
 }
 
-// ClientUsernames response struct
+// ClientUsername Attribute response struct
 type ClientUsernameAttribute struct {
 	AttributeName  string `json:"attributeName"`
 	AttributeValue string `json:"attributeValue"`
 	ClientUsername string `json:"clientUsername"`
 	MsgVpnName     string `json:"msgVpnName"`
 }
+
+// ClientUsername Attributes array response struct
 type ClientUsernameAttributes struct {
 	Data []ClientUsernameAttribute `json:"data"`
 }
 
+// ClientUsername response struct
 type SolaceClientUsernameResp struct {
 	ClientUsername string                    `json:"clientUsername"`
 	Enabled        bool                      `json:"enabled"`
@@ -42,9 +47,13 @@ type SolaceClientUsernameResp struct {
 	Attributes     []ClientUsernameAttribute `json:"attributes"`
 	Ports          []int32                   `json:"ports"`
 }
+
+// ClientUsernames array response struct
 type SolaceClientUsernamesResp struct {
 	Data []SolaceClientUsernameResp `json:"data"`
 }
+
+// solace svc specification
 type SolaceSvcSpec struct {
 	MsgVpnName     string  `json:"msgVpnName"`
 	ClientUsername string  `json:"clientUsername"`
@@ -60,11 +69,7 @@ type Pppo struct {
 	OpeningsNumber int32  `json:"openingsNumber"`
 }
 
-type Attributes struct {
-	AttributeName  string `json:"attributeName"`
-	AttributeValue string `json:"attributeValue"`
-}
-
+// protocols struct used for protocol's mapping
 type protocols struct {
 	ServiceAmqpPlainTextListenPort         string `json:"amqpPlainText"`
 	ServiceAmqpTlsListenPort               string `json:"amqpTls"`
@@ -125,6 +130,7 @@ func (m *SolaceMsgVpnsResp) GetSolaceClientUsernames(
 	return resp, nil
 }
 
+// Returns the solace's clientUsername attributes in Json format
 func GetClientUsernameAttributes(
 	s *scalablev1alpha1.SolaceScalable,
 	data string,
@@ -138,7 +144,8 @@ func GetClientUsernameAttributes(
 	return resp, nil
 }
 
-func (c *SolaceClientUsernamesResp) AddClientAttributes(
+// Add client username attributes in solaceSpec struct
+func (c *SolaceClientUsernamesResp) MergeClientAttributesInSpec(
 	a ClientUsernameAttributes,
 ) ([]SolaceSvcSpec, error) {
 	svcSpecs := []SolaceSvcSpec{}
@@ -177,34 +184,24 @@ func (c *SolaceClientUsernamesResp) AddClientAttributes(
 	return svcSpecs, nil
 }
 
-func (s *SolaceSvcSpec) AddMsgVpnPorts(m SolaceMsgVpnResp) {
+// Add message vpn ports in solaceSpec struct
+func (s *SolaceSvcSpec) MergeMsgVpnPortsInSpec(m SolaceMsgVpnResp) {
 	protocolsExist := false
 
 	if s.MsgVpnName == m.MsgVpnName {
-		protocols := protocolsList()
 		for k, v := range s.Pppo {
 			protocolsExist = true
-			/*s.Pppo[k].Port = append(
-				s.Pppo[k].Port,
-				int32(
-					GetMsgVpnProtocolPort(
-						m,
-						v.Protocol,
-						protocols,
-					),
-				),
-			)*/
 			s.Pppo[k].Port = int32(
 				GetMsgVpnProtocolPort(
 					m,
 					v.Protocol,
-					protocols,
+					protocolsList(),
 				),
 			)
 		}
 
 		if !protocolsExist {
-			// App ports
+			// Add all ports
 			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.ServiceAmqpPlainTextListenPort))
 			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.ServiceAmqpTlsListenPort))
 			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.ServiceMqttPlainTextListenPort))
@@ -217,6 +214,7 @@ func (s *SolaceSvcSpec) AddMsgVpnPorts(m SolaceMsgVpnResp) {
 	}
 }
 
+// Protocls mapping
 func GetMsgVpnProtocolPort(m SolaceMsgVpnResp, s string, p protocols) int {
 	// supportes protocols
 	if p.ServiceAmqpPlainTextListenPort == s {
