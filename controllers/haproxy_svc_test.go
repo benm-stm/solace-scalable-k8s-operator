@@ -6,15 +6,14 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func MockHaproxyReconciler() (
 	*SolaceScalableReconciler,
-	[]runtime.Object,
 	*corev1.Service,
+	error,
 ) {
 	haproxy := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -24,21 +23,21 @@ func MockHaproxyReconciler() (
 		Spec: corev1.ServiceSpec{},
 	}
 
-	// Objects to track in the fake client.
-	objs := []runtime.Object{haproxy}
-
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
 	s.AddKnownTypes(corev1.SchemeGroupVersion, haproxy)
 
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithScheme(s).Build()
+	if err := cl.Create(context.TODO(), haproxy); err != nil {
+		return nil, nil, err
+	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	return &SolaceScalableReconciler{
 		Client: cl,
 		Scheme: s,
-	}, objs, haproxy
+	}, haproxy, nil
 }
 
 func TestNewSvcHaproxy(t *testing.T) {
@@ -72,26 +71,32 @@ func TestGetDefaultHaProxyConf(t *testing.T) {
 
 func TestGetExistingHaProxySvc(t *testing.T) {
 	// serviceobject with metadata
-	r, objs, _ := MockHaproxyReconciler()
+	r, obj, err := MockHaproxyReconciler()
+	if err != nil {
+		t.Errorf("object mock fail")
+	}
 	got, err := (*r).GetExistingHaProxySvc(
 		&solaceScalable,
 		"solacescalable",
 		context.TODO(),
 	)
 	if err != nil {
-		t.Errorf("got %v, wanted %v", got, objs)
+		t.Errorf("got %v, wanted %v", got, obj)
 	}
 }
 
 func TestUpdateHAProxySvc(t *testing.T) {
-	r, objs, svc := MockHaproxyReconciler()
+	r, svc, err := MockHaproxyReconciler()
+	if err != nil {
+		t.Errorf("object mock fail")
+	}
 	var hashstore = &map[string]string{}
-	err := (*r).UpdateHAProxySvc(
+	err = (*r).UpdateHAProxySvc(
 		hashstore,
 		svc,
 		context.TODO(),
 	)
 	if err != nil {
-		t.Errorf("got %v, wanted %v", err, objs)
+		t.Errorf("got %v, wanted %v", err, svc)
 	}
 }

@@ -8,7 +8,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -16,6 +15,7 @@ import (
 func MockPersistentVolume() (
 	*SolaceScalableReconciler,
 	*corev1.PersistentVolume,
+	error,
 ) {
 	pv := &corev1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -33,23 +33,22 @@ func MockPersistentVolume() (
 			StorageClassName:              "localManual",
 		},
 	}
-	//cm := &corev1.ConfigMap{}
-
-	// Objects to track in the fake client.
-	objs := []runtime.Object{pv}
 
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
 	s.AddKnownTypes(corev1.SchemeGroupVersion, pv)
 
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithScheme(s).Build()
+	if err := cl.Create(context.TODO(), pv); err != nil {
+		return nil, nil, err
+	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	return &SolaceScalableReconciler{
 		Client: cl,
 		Scheme: s,
-	}, pv
+	}, pv, nil
 }
 
 func TestNewPersistentVolume(t *testing.T) {
@@ -63,7 +62,10 @@ func TestNewPersistentVolume(t *testing.T) {
 }
 
 func TestCreateSolaceLocalPv(t *testing.T) {
-	r, _ := MockPersistentVolume()
+	r, _, err := MockPersistentVolume()
+	if err != nil {
+		t.Errorf("object mock fail")
+	}
 	success, err := r.CreateSolaceLocalPv(
 		&solaceScalable,
 		NewPersistentVolume(&solaceScalable, "1", Labels(&solaceScalable)),

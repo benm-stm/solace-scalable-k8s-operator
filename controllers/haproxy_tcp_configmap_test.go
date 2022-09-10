@@ -6,15 +6,14 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func MockConfigmap() (
 	*SolaceScalableReconciler,
-	[]runtime.Object,
 	*corev1.ConfigMap,
+	error,
 ) {
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -25,23 +24,22 @@ func MockConfigmap() (
 			"1880": "solasescalable/test-svc-init:1880",
 		},
 	}
-	//cm := &corev1.ConfigMap{}
-
-	// Objects to track in the fake client.
-	objs := []runtime.Object{cm}
 
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
 	s.AddKnownTypes(corev1.SchemeGroupVersion, cm)
 
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithScheme(s).Build()
+	if err := cl.Create(context.TODO(), cm); err != nil {
+		return nil, nil, err
+	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	return &SolaceScalableReconciler{
 		Client: cl,
 		Scheme: s,
-	}, objs, cm
+	}, cm, nil
 }
 
 func TestNewtcpConfigmap(t *testing.T) {
@@ -94,10 +92,13 @@ func TestCreateSolaceTcpConfigmap(t *testing.T) {
 }
 
 func TestUpdateSolaceTcpConfigmap(t *testing.T) {
-	r, _, cm := MockConfigmap()
+	r, cm, err := MockConfigmap()
+	if err != nil {
+		t.Errorf("object mock fail")
+	}
 	// when does not exist
 	hashStore := map[string]string{}
-	err := (*r).UpdateSolaceTcpConfigmap(
+	err = (*r).UpdateSolaceTcpConfigmap(
 		&solaceScalable,
 		cm,
 		context.TODO(),
