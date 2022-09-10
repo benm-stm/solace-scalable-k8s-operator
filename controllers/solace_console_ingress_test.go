@@ -4,16 +4,10 @@ import (
 	"context"
 	"strconv"
 	"testing"
-
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func MockSolaceConsoleReconciler() *SolaceScalableReconciler {
+/*
+func MockSolaceConsoleReconciler() (*SolaceScalableReconciler, error) {
 	solaceIngress := &v1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "solacescalable",
@@ -22,22 +16,22 @@ func MockSolaceConsoleReconciler() *SolaceScalableReconciler {
 		Spec: v1.IngressSpec{},
 	}
 
-	// Objects to track in the fake client.
-	objs := []runtime.Object{solaceIngress}
-
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
 	s.AddKnownTypes(corev1.SchemeGroupVersion, solaceIngress)
 
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithScheme(s).Build()
+	if err := cl.Create(context.TODO(), solaceIngress); err != nil {
+		return nil, err
+	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	return &SolaceScalableReconciler{
 		Client: cl,
 		Scheme: s,
-	}
-}
+	}, nil
+}*/
 
 func TestNewIngressConsole(t *testing.T) {
 	got := NewIngressConsole(
@@ -61,8 +55,12 @@ func TestCreateIngressConsoleRules(t *testing.T) {
 }
 
 func TestCreateSolaceConsoleIngress(t *testing.T) {
-	r, _, _ := MockHaproxyReconciler()
-	err := (*r).CreateSolaceConsoleIngress(
+	r, _, err := MockHaproxyReconciler()
+	if err != nil {
+		t.Errorf("object mock fail")
+	}
+
+	err = (*r).CreateSolaceConsoleIngress(
 		&solaceScalable,
 		NewIngressConsole(&solaceScalable, Labels(&solaceScalable)),
 		context.TODO(),

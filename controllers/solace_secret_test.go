@@ -6,7 +6,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -14,6 +13,7 @@ import (
 func MockSecret() (
 	*SolaceScalableReconciler,
 	*corev1.Secret,
+	error,
 ) {
 	sec := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{},
@@ -28,25 +28,28 @@ func MockSecret() (
 		Type: "",
 	}
 
-	// Objects to track in the fake client.
-	objs := []runtime.Object{sec}
-
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
 	s.AddKnownTypes(corev1.SchemeGroupVersion, sec)
 
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithScheme(s).Build()
+	if err := cl.Create(context.TODO(), sec); err != nil {
+		return nil, nil, err
+	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	return &SolaceScalableReconciler{
 		Client: cl,
 		Scheme: s,
-	}, sec
+	}, sec, nil
 }
 
 func TestGetSolaceSecret(t *testing.T) {
-	r, _ := MockSecret()
+	r, _, err := MockSecret()
+	if err != nil {
+		t.Errorf("object mock fail")
+	}
 	got, err := r.GetSolaceSecret(&solaceScalable,
 		context.TODO(),
 	)

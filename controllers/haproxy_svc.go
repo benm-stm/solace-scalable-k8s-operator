@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
-	"strconv"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
+	"github.com/rung/go-safecast"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -26,9 +26,9 @@ func NewSvcHaproxy(
 	for k := range d {
 		portExist = false
 		portIndex = 0
-		svcPort := corev1.ServicePort{}
+		var svcPort corev1.ServicePort
 
-		port, err := strconv.Atoi(k)
+		port, err := safecast.Atoi32(k)
 		if err == nil {
 			//check if the svc exist
 			for i, p := range ports {

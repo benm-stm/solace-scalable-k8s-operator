@@ -66,18 +66,15 @@ func AttrSpecificDatasConstruction(
 		beginningPort,
 	)
 
+	var protocol string = "na"
+	if pppo.Protocol != "" {
+		protocol = pppo.Protocol
+	}
 	svcName := oP.MsgVpnName + "-" +
 		oP.ClientUsername + "-" +
 		strconv.FormatInt(int64(nextAvailable), 10) + "-" +
-		"na" + "-" +
+		protocol + "-" +
 		nature
-	if pppo != nil {
-		svcName = oP.MsgVpnName + "-" +
-			oP.ClientUsername + "-" +
-			strconv.FormatInt(int64(nextAvailable), 10) + "-" +
-			pppo.Protocol + "-" +
-			nature
-	}
 
 	*pubSubSvcNames = append(
 		*pubSubSvcNames,
@@ -109,8 +106,8 @@ func ConstructAttrSpecificDatas(
 	pubSubSvcNames *[]string,
 	cmData *map[string]string,
 	svcIds *[]SvcId,
-	pppo *Pppo,
-	oP *SolaceSvcSpec,
+	pppo Pppo,
+	oP SolaceSvcSpec,
 	p int32,
 	nature string,
 	portsArr *[]int32,
@@ -118,14 +115,14 @@ func ConstructAttrSpecificDatas(
 	if p != 0 {
 		// when ppp nil, it means that no clientusername attribues (pub/sub)
 		// are present, so make openings for all msgvpn protocol ports
-		if pppo == nil {
+		if (pppo == Pppo{}) {
 			AttrSpecificDatasConstruction(
 				s,
 				pubSubSvcNames,
 				cmData,
 				svcIds,
-				pppo,
-				oP,
+				&pppo,
+				&oP,
 				p,
 				nature,
 				portsArr,
@@ -138,8 +135,8 @@ func ConstructAttrSpecificDatas(
 					pubSubSvcNames,
 					cmData,
 					svcIds,
-					pppo,
-					oP,
+					&pppo,
+					&oP,
 					p,
 					nature,
 					portsArr,
@@ -166,8 +163,8 @@ func ConstructSvcDatas(s *scalablev1alpha1.SolaceScalable,
 					&pubSubSvcNames,
 					&cmData,
 					&svcIds,
-					&ppp,
-					&oP,
+					ppp,
+					oP,
 					ppp.Port,
 					nature,
 					portsArr,
@@ -180,8 +177,8 @@ func ConstructSvcDatas(s *scalablev1alpha1.SolaceScalable,
 				&pubSubSvcNames,
 				&cmData,
 				&svcIds,
-				nil,
-				&oP,
+				Pppo{},
+				oP,
 				p,
 				nature,
 				portsArr,

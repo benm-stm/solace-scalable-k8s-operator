@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	v1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -13,26 +12,30 @@ import (
 func MockStatefulset() (
 	*SolaceScalableReconciler,
 	*v1.StatefulSet,
+	error,
 ) {
 	ss := NewStatefulset(
 		&solaceScalable,
-		Labels(&solaceScalable),
+		map[string]string{
+			"app": "test",
+		},
 	)
-
-	// Objects to track in the fake client.
-	objs := []runtime.Object{ss}
 
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
+	s.AddKnownTypes(v1.SchemeGroupVersion, ss)
 
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithScheme(s).Build()
+	if err := cl.Create(context.TODO(), ss); err != nil {
+		return nil, nil, err
+	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	return &SolaceScalableReconciler{
 		Client: cl,
 		Scheme: s,
-	}, ss
+	}, ss, nil
 }
 func TestNewStatefulset(t *testing.T) {
 	got := NewStatefulset(
@@ -45,7 +48,10 @@ func TestNewStatefulset(t *testing.T) {
 }
 
 func TestCreateStatefulSet(t *testing.T) {
-	r, ss := MockStatefulset()
+	r, ss, err := MockStatefulset()
+	if err != nil {
+		t.Errorf("object mock fail %v", err)
+	}
 	got := (*r).CreateStatefulSet(
 		ss,
 		context.TODO(),
@@ -56,11 +62,14 @@ func TestCreateStatefulSet(t *testing.T) {
 }
 
 func TestUpdateStatefulSet(t *testing.T) {
-	r, ss := MockStatefulset()
+	r, ss, err := MockStatefulset()
+	if err != nil {
+		t.Errorf("object mock fail")
+	}
 	hashStore := map[string]string{}
 	// Case 1: it's the fist launch of the operator
 	// There is no saved hash
-	err := (*r).UpdateStatefulSet(
+	err = (*r).UpdateStatefulSet(
 		ss,
 		context.TODO(),
 		&hashStore,

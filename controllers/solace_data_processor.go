@@ -2,8 +2,9 @@ package controllers
 
 import (
 	"encoding/json"
-	"strconv"
 	"strings"
+
+	"github.com/rung/go-safecast"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 )
@@ -162,10 +163,10 @@ func (c *SolaceClientUsernamesResp) MergeClientAttributesInSpec(
 						//split protocol and number of openings
 						po := strings.Split(protocol, ":")
 						// if user didn't provide the openings number 1 is the default value
-						var openingsNumber = 1
+						var openingsNumber int32 = 1
 						var err error
 						if len(po) == 2 {
-							openingsNumber, err = strconv.Atoi(po[1])
+							openingsNumber, err = safecast.Atoi32(po[1])
 							if err != nil {
 								return []SolaceSvcSpec{}, err
 							}

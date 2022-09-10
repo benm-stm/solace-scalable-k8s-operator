@@ -7,7 +7,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -18,6 +17,7 @@ import (
 func MockSvc() (
 	*SolaceScalableReconciler,
 	*corev1.Service,
+	error,
 ) {
 	svcId := SvcId{
 		Name:           "testName",
@@ -33,21 +33,21 @@ func MockSvc() (
 		Labels(&solaceScalable),
 	)
 
-	// Objects to track in the fake client.
-	objs := []runtime.Object{svc}
-
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
 	s.AddKnownTypes(corev1.SchemeGroupVersion, svc)
 
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithScheme(s).Build()
+	if err := cl.Create(context.TODO(), svc); err != nil {
+		return nil, nil, err
+	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	return &SolaceScalableReconciler{
 		Client: cl,
 		Scheme: s,
-	}, svc
+	}, svc, nil
 }
 
 func TestNewSvcPubSub(t *testing.T) {
@@ -70,7 +70,10 @@ func TestNewSvcPubSub(t *testing.T) {
 }
 
 func TestCreatePubSubSvc(t *testing.T) {
-	r, _ := MockSvc()
+	r, _, err := MockSvc()
+	if err != nil {
+		t.Errorf("object mock fail")
+	}
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
@@ -187,8 +190,8 @@ func TestConstructAttrSpecificDatas(t *testing.T) {
 		&pubSubSvcNames,
 		&cmData,
 		&svcIds,
-		&oP[0].Pppo[0],
-		&oP[0],
+		oP[0].Pppo[0],
+		oP[0],
 		p,
 		nature,
 		&ports,
@@ -263,7 +266,10 @@ func TestConstructSvcDatas(t *testing.T) {
 }
 
 func TestListPubSubSvc(t *testing.T) {
-	r, _ := MockSvc()
+	r, _, err := MockSvc()
+	if err != nil {
+		t.Errorf("object mock fail")
+	}
 	gotSvcList, gotErr := (*r).ListPubSubSvc(
 		&solaceScalable,
 		context.TODO(),
@@ -275,7 +281,10 @@ func TestListPubSubSvc(t *testing.T) {
 }
 
 func TestDeletePubSubSvc(t *testing.T) {
-	r, svc := MockSvc()
+	r, svc, err := MockSvc()
+	if err != nil {
+		t.Errorf("object mock fail")
+	}
 	pubSubSvcNames := []string{"svc1", "svc2"}
 
 	svcList := &corev1.ServiceList{}

@@ -1,3 +1,9 @@
+![example workflow](https://github.com/benm-stm/solace-scalable-k8s-operator/actions/workflows/build_and_test.yml/badge.svg)
+![example workflow](https://github.com/benm-stm/solace-scalable-k8s-operator/actions/workflows/golangci-lint.yml/badge.svg)
+![example workflow](https://github.com/benm-stm/solace-scalable-k8s-operator/actions/workflows/gosec.yml/badge.svg)
+![example workflow](https://github.com/benm-stm/solace-scalable-k8s-operator/actions/workflows/push_docker_image.yml/badge.svg)
+
+
 # solace-scalable-operator
 A solace operator to create a scalable solace cluster under kubernetes
 
