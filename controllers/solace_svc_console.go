@@ -37,7 +37,7 @@ func NewSvcConsole(
 	}
 }
 
-//create console service
+// create console service
 func (r *SolaceScalableReconciler) CreateSolaceConsoleSvc(
 	svc *corev1.Service,
 	ctx context.Context,
@@ -61,7 +61,7 @@ func (r *SolaceScalableReconciler) CreateSolaceConsoleSvc(
 	return nil
 }
 
-//delete unused console services
+// delete unused console services
 func (r *SolaceScalableReconciler) DeleteSolaceConsoleSvc(
 	solaceScalable *scalablev1alpha1.SolaceScalable,
 	ctx context.Context,

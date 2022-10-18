@@ -38,7 +38,7 @@ func AsSha256(o interface{}) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-//Removes repeated int32 and 0 elements from given slice
+// Removes repeated int32 and 0 elements from given slice
 func UniqueAndNonZero(intSlice []int32) []int32 {
 	keys := make(map[int32]bool)
 	list := []int32{}
@@ -102,10 +102,11 @@ func Contains(s []string, str string) bool {
 /*
 RFC 1035 Label Names
 Some resource types require their names to follow the DNS label standard as defined in RFC 1035. This means the name must:
-    1- contain at most 63 characters
-    2- contain only lowercase alphanumeric characters or '-'
-    3- start with an alphabetic character
-    4- end with an alphanumeric character
+
+	1- contain at most 63 characters
+	2- contain only lowercase alphanumeric characters or '-'
+	3- start with an alphabetic character
+	4- end with an alphanumeric character
 */
 func SanityzeForSvcName(s string) string {
 	forbiddenChars := []string{"#", "\\", "/", ")", "(", ":"}
@@ -122,9 +123,9 @@ func SanityzeForSvcName(s string) string {
 
 /*
 Searches for the next available int32 based on a given array of int32, see below's example
-	- ap = [1025, 1026, 1028]
-	- p = 1026
-	- return 1027
+  - ap = [1025, 1026, 1028]
+  - p = 1026
+  - return 1027
 */
 func NextAvailablePort(
 	ap []int32,

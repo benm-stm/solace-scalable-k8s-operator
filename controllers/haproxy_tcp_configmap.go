@@ -30,7 +30,7 @@ func NewTcpConfigmap(
 	}
 }
 
-//create tcp ingress configmap
+// create tcp ingress configmap
 func (r *SolaceScalableReconciler) CreateSolaceTcpConfigmap(
 	solaceScalable *scalablev1alpha1.SolaceScalable,
 	data *map[string]string,
@@ -54,7 +54,7 @@ func (r *SolaceScalableReconciler) CreateSolaceTcpConfigmap(
 	return configMap, nil
 }
 
-//update tcp ingress configmap
+// update tcp ingress configmap
 func (r *SolaceScalableReconciler) UpdateSolaceTcpConfigmap(
 	solaceScalable *scalablev1alpha1.SolaceScalable,
 	configMap *corev1.ConfigMap,
