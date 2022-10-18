@@ -8,12 +8,43 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - configmaps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumes
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - services
   verbs:
   - create
   - delete
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - apps
@@ -21,7 +52,6 @@ rules:
   - statefulsets
   verbs:
   - create
-  - delete
   - get
   - list
   - patch
@@ -33,7 +63,6 @@ rules:
   - ingresses
   verbs:
   - create
-  - delete
   - get
   - list
   - patch

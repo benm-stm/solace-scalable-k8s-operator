@@ -62,7 +62,7 @@ type SolaceSvcSpec struct {
 	AllMsgVpnPorts []int32 `json:"AllMsgVpnPorts"`
 }
 
-//Protocol, Port, PuborSub and OpeningsNumber
+// Protocol, Port, PuborSub and OpeningsNumber
 type Pppo struct {
 	Protocol       string `json:"protocol"`
 	Port           int32  `json:"port"`
