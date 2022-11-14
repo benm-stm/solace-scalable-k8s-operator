@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -75,7 +75,7 @@ func CallSolaceSempApi(
 		if err != nil {
 			retErr = err
 		}
-		bodyText, err := ioutil.ReadAll(resp.Body)
+		bodyText, err := io.ReadAll(resp.Body)
 		if err != nil {
 			retErr = err
 		}
