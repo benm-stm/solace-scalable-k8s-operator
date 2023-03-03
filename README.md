@@ -7,6 +7,9 @@
 # solace-scalable-operator
 A solace operator to create a scalable solace cluster under kubernetes
 
+## Architecture
+<img src="images/solace_operator_architecture.png" width="1000" title="hover text">
+
 ## Description
 The operator is used to spawn solace standalone instances using a statefulset.
 It listens to changes in the solace instances via it's SEMP api to make necessary openings in kubernetes.
@@ -31,47 +34,97 @@ The operator will create/update or delete :
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
+
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 ### Prerequisists
 This operator is using [haproxytech/kubernetes-ingress](https://github.com/haproxytech/kubernetes-ingress)
 
-You need to install 2 HAproxy instances, 1 for publishing and the other for subscribing.
-
-Use below 2 helm charts with the following changes
-#### Pub Haproxy ingress for publishing
+Add the haproxytech/kubernetes-ingress helm repo
+```sh
+helm repo add haproxytech https://haproxytech.github.io/helm-charts
+helm repo update
 ```
+
+You need to install 2 HAproxy instances:
+- One for publishing
+- One for subscribing.
+
+
+Use below 2 helm charts with the following options
+#### Pub Haproxy ingress for publishing
+```sh
 helm install --namespace ingress-controller --create-namespace --set controller.ingressClass='haproxy-pub',controller.ingressClassResource.name='haproxy-pub',controller.replicaCount=1,controller.extraArgs={'--configmap-tcp-services=solacescalable/solacescalable-pub-tcp-ingress'} haproxy-pub haproxytech/kubernetes-ingress
 ```
 #### Sub Haproxy ingress for subscribing
-```
+```sh
 helm install --namespace ingress-controller --create-namespace --set controller.ingressClass='haproxy-sub',controller.ingressClassResource.name='haproxy-sub',controller.replicaCount=1,controller.extraArgs={'--configmap-tcp-services=solacescalable/solacescalable-sub-tcp-ingress'} haproxy-sub haproxytech/kubernetes-ingress
 ```
-
+#### Create solacescalable namespace
+```sh
+kubectl create ns solacescalable
+```
 #### solace admin password
 ```
 kubectl create secret -n solacescalable generic solacescalable --from-literal adminPassword=<your password>
 ```
 **NOTE**: If you run it like above, don't forget to clean your shell history
 ### Running on the cluster
-1. Install Instances of Custom Resources:
+Install an Instance of the Custom Resource:
 
-```sh
-kubectl apply -f config/samples/
 ```
-
-2. Build and push your image to the location specified by `IMG`:
+kubectl apply -f config/samples/scalable_v1alpha1_solacescalable.yaml
+```
+**NOTE**: The Instance consist of the following yaml
+```yaml
+apiVersion: scalable.solace.io/v1alpha1
+kind: SolaceScalable
+metadata:
+  name: solacescalable
+  namespace: solacescalable
+spec:
+  replicas: 3
+  clusterUrl: scalable.dev.gcp.digital-backbone.io
+  container:
+    name: solace
+    image: solace/solace-pubsub-standard:latest
+    volume:
+      name: storage
+      size: 50Gi
+      hostPath: /opt/storage
+    env:
+    - name: username_admin_globalaccesslevel
+      value: admin
+    - name: username_admin_password
+      valueFrom:
+        secretKeyRef:
+          name: solacescalable
+          key: adminPassword
+          optional: false
+  pvClass: localManual
+  haproxy:
+    namespace: ingress-controller
+    publish:
+      serviceName: haproxy-pub-kubernetes-ingress
+    subscribe:
+      serviceName: haproxy-sub-kubernetes-ingress
+  network:
+    startingAvailablePorts: 1025
+```
+**Thats all folks :)**
+## Build your own image
+Build and push your image to the location specified by `IMG`:
 	
 ```sh
-make docker-build docker-push IMG=benmstm/solace-scalable-operator:tag
+make docker-build docker-push IMG=benmstm/solace-scalable-k8s-operator:latest
 ```
 	
-3. Deploy the controller to the cluster with the image specified by `IMG`:
+Deploy the controller to the cluster with the image specified by `IMG`:
 
 ```sh
-make deploy IMG=benmstm/solace-scalable-operator:tag
+make deploy IMG=benmstm/solace-scalable-k8s-operator:latest
 ```
 
-### Uninstall CRDs
+## Uninstall CRDs
 To delete the CRDs from the cluster:
 
 ```sh
@@ -85,10 +138,10 @@ UnDeploy the controller to the cluster:
 make undeploy
 ```
 
-### Solace side configuration
+## Solace side configuration
 We are using solace's client username attributes at our favour to store operator's behavioural datas
 
-<img src="solace-attribs.png" width="500" title="hover text">
+<img src="images/solace-attribs.png" width="500" title="hover text">
 
 #### Attribute Names
 - pub: if we want the clientusername have openings in the publish haproxy ingress
@@ -113,59 +166,5 @@ Here is the complete supported protocol list
 **NOTE**: There are cases were the clientUsername want to publish in different topics and want the connection to be split evenly across the cluster.
 In this case we added a simple mecanism to spawn n ports for the same couple (clientusername/protocol), after each protocol name just add **:n**.
 
-## Contributing
-in order to contribute you open a pull request and we will discuss it :)
-
-### How it works
-This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
-
-It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/) 
-which provides a reconcile function responsible for synchronizing resources untile the desired state is reached on the cluster 
-
-### Test It Out
-1. Install the CRDs into the cluster:
-
-```sh
-make install
-```
-
-2. Run your controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
-
-```sh
-make run
-```
-
-**NOTE:** You can also run this in one step by running: `make install run`
-
-### Modifying the API definitions
-If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
-
-```sh
-make manifests
-```
-
-**NOTE:** Run `make --help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
-
 ## Optional kubectl-plugin
-In order to get the created pub/sub service ports in a clear manner, you can use the following kubectl [ports](https://github.com/benm-stm/kubectl-ports) 
-## License
-
-Copyright 2022.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-- Support multi user running using the same protocol in the same message-vpn
-- Capability to control openings via solace attributes (more details in READMS)
-- Wider unit tests coverage
+In order to get the created pub/sub service ports in a clear manner, you can use the following [kubectl ports](https://github.com/benm-stm/kubectl-ports) 
