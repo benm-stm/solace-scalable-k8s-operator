@@ -28,7 +28,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -66,7 +65,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 	request ctrl.Request,
 ) (ctrl.Result, error) {
 	// Check existance of CRD
-	log := log.FromContext(ctx)
+	//log := log.FromContext(ctx)
 	solaceScalable := &scalablev1alpha1.SolaceScalable{}
 	solaceLabels := Labels(solaceScalable)
 	if err := r.Get(
@@ -169,18 +168,15 @@ func (r *SolaceScalableReconciler) Reconcile(
 	// Check if solace instances are up to query SempV2
 	for i := 0; i < int((*solaceScalable).Spec.Replicas); i++ {
 		nodeBaseUrl := ConstructSempUrl((*solaceScalable).Spec.ClusterUrl, i)
-		_, success, _ := CallSolaceSempApi(
+		_, success, err := CallSolaceSempApi(
 			nodeBaseUrl,
 			"/monitor/about/api",
 			ctx,
 			solaceAdminPassword,
 		)
-		/*if !success && i >= int((*solaceScalable).Spec.Replicas) {
+		if err != nil {
 			return reconcile.Result{}, err
-		} else {
-			break
-		}*/
-
+		}
 		if success {
 			// Get open svc pub/sub ports
 			data, _, err := CallSolaceSempApi(
@@ -428,9 +424,6 @@ func (r *SolaceScalableReconciler) Reconcile(
 			if err := r.DeletePubSubSvc(svcList, &pubSubSvcNames, ctx); err != nil {
 				return reconcile.Result{}, err
 			}
-
-		} else {
-			log.Error(err, "Solace API call issue")
 		}
 	}
 
