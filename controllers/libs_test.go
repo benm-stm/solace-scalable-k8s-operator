@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -45,25 +47,43 @@ func TestUniqueAndNonZero(t *testing.T) {
 }
 
 func TestCallSolaceSempApi(t *testing.T) {
-	//when url does not respond
-	gotV, gotB, gotErr := CallSolaceSempApi(
-		&solaceScalable,
-		"/monitor/",
-		context.TODO(),
-		"",
-	)
-	if gotV != "" || gotB != false || gotErr != nil {
-		t.Errorf("got %v, %v,%v", gotV, gotB, gotErr)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/SEMP/v2", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"success": true}`))
+	})
+
+	testTable := []struct {
+		name             string
+		server           *httptest.Server
+		expectedResponse []byte
+		expectedBool     bool
+		expectedErr      error
+	}{
+		{
+			name:             "solace-api-response",
+			server:           httptest.NewServer(mux),
+			expectedResponse: []byte(`{"success": true}`),
+			expectedErr:      nil,
+			expectedBool:     true,
+		},
 	}
-	//when url is valid
-	gotV, gotB, gotErr = CallSolaceSempApi(
-		&solaceScalable,
-		"/config/about",
-		context.TODO(),
-		"",
-	)
-	if gotV == "" || gotB == false || gotErr != nil {
-		t.Errorf("got %v, %v,%v check if your solace instances are up", gotV, gotB, gotErr)
+
+	for _, tc := range testTable {
+		print("raaaf ", tc.server.URL)
+		t.Run(tc.name, func(t *testing.T) {
+			defer tc.server.Close()
+			gotV, gotB, gotErr := CallSolaceSempApi(
+				tc.server.URL,
+				"",
+				context.TODO(),
+				"",
+			)
+			if gotV != "" || gotB != false || gotErr != nil {
+				t.Errorf("got %v, %v,%v", gotV, gotB, gotErr)
+			}
+		})
 	}
 }
 

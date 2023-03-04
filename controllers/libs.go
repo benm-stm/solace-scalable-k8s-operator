@@ -55,38 +55,47 @@ func UniqueAndNonZero(intSlice []int32) []int32 {
 Calls the solace SEMPV2 Api
 */
 func CallSolaceSempApi(
-	s *scalablev1alpha1.SolaceScalable,
+	//s *scalablev1alpha1.SolaceScalable,
+	url string,
+	//replicas int,
 	apiPath string,
 	ctx context.Context,
 	solaceAdminPassword string,
 ) (string, bool, error) {
 	log := log.FromContext(ctx)
 	var retErr error
-	for i := 0; i < int(s.Spec.Replicas); i++ {
-		url := "n" + strconv.Itoa(i) + "." + s.Spec.ClusterUrl
-
-		client := &http.Client{}
-		req, err := http.NewRequest("GET", "http://"+url+"/SEMP/v2"+apiPath, nil)
-		if err != nil {
-			retErr = err
-		}
-		req.SetBasicAuth("admin", solaceAdminPassword)
-		resp, err := client.Do(req)
-		if err != nil {
-			retErr = err
-		}
-		bodyText, err := io.ReadAll(resp.Body)
-		if err != nil {
-			retErr = err
-		}
-		if resp.StatusCode == 200 {
-			return string(bodyText), true, nil
-		} else {
-			log.Info("solace Url unreachable " + url)
-		}
+	//for i := 0; i < replicas; i++ {
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url+apiPath, nil)
+	if err != nil {
+		retErr = err
 	}
-	log.Error(retErr, "All solace Urls are unreachable ")
+	req.SetBasicAuth("admin", solaceAdminPassword)
+	resp, err := client.Do(req)
+	if err != nil {
+		retErr = err
+	}
+	bodyText, err := io.ReadAll(resp.Body)
+	if err != nil {
+		retErr = err
+	}
+	if resp.StatusCode == 200 {
+		return string(bodyText), true, nil
+	} else {
+		log.Info("solace Url unreachable " + url)
+	}
+	//}
+	//log.Error(retErr, "All solace Urls are unreachable ")
+	//print("here final")
 	return "", false, retErr
+}
+
+func ConstructSempUrl(url string, nodeNumber int) string {
+	url = "n" + strconv.Itoa(nodeNumber) + "." + url
+	if strings.HasPrefix(url, "http://") {
+		return url + "/SEMP/v2"
+	}
+	return "http://" + url + "/SEMP/v2"
 }
 
 func Contains(s []string, str string) bool {
