@@ -51,7 +51,10 @@ func TestCallSolaceSempApi(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/SEMP/v2", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"success": true}`))
+		_, err := w.Write([]byte(`{"success": true}`))
+		if err != nil {
+			print(err)
+		}
 	})
 
 	testTable := []struct {
@@ -71,7 +74,6 @@ func TestCallSolaceSempApi(t *testing.T) {
 	}
 
 	for _, tc := range testTable {
-		print("raaaf ", tc.server.URL)
 		t.Run(tc.name, func(t *testing.T) {
 			defer tc.server.Close()
 			gotV, gotB, gotErr := CallSolaceSempApi(
@@ -84,6 +86,14 @@ func TestCallSolaceSempApi(t *testing.T) {
 				t.Errorf("got %v, %v,%v", gotV, gotB, gotErr)
 			}
 		})
+	}
+}
+
+func TestConstructSempUrl(t *testing.T) {
+	got := Contains([]string{"a", "b", "c", "a"}, "c")
+	want := true
+	if got != want {
+		t.Errorf("got %v, wanted %v", got, want)
 	}
 }
 
