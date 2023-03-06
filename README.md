@@ -68,9 +68,16 @@ kubectl create ns solacescalable
 kubectl create secret -n solacescalable generic solacescalable --from-literal adminPassword=<your password>
 ```
 **NOTE**: If you run it like above, don't forget to clean your shell history
+
+#### Deploy the operator
+```sh
+make deploy IMG=benmstm/solace-scalable-k8s-operator:latest
+```
+**Note**: Below is the list of resources created in the cluster
+<img src="images/deploy_controller.png" width="1000" title="hover text">
+
 ### Running on the cluster
 Install an Instance of the Custom Resource:
-
 ```
 kubectl apply -f config/samples/scalable_v1alpha1_solacescalable.yaml
 ```
@@ -115,13 +122,13 @@ spec:
 Build and push your image to the location specified by `IMG`:
 	
 ```sh
-make docker-build docker-push IMG=benmstm/solace-scalable-k8s-operator:latest
+make docker-build docker-push IMG=repo/img_name:tag
 ```
 	
 Deploy the controller to the cluster with the image specified by `IMG`:
 
 ```sh
-make deploy IMG=benmstm/solace-scalable-k8s-operator:latest
+make deploy IMG=repo/img_name:tag
 ```
 
 ## Uninstall CRDs
@@ -141,7 +148,7 @@ make undeploy
 ## Solace side configuration
 We are using solace's client username attributes at our favour to store operator's behavioural datas
 
-<img src="images/solace-attribs.png" width="500" title="hover text">
+<img src="images/solace-attribs.png" width="1000" title="hover text">
 
 #### Attribute Names
 - pub: if we want the clientusername have openings in the publish haproxy ingress
@@ -167,4 +174,8 @@ Here is the complete supported protocol list
 In this case we added a simple mecanism to spawn n ports for the same couple (clientusername/protocol), after each protocol name just add **:n**.
 
 ## Optional kubectl-plugin
-In order to get the created pub/sub service ports in a clear manner, you can use the following [kubectl ports](https://github.com/benm-stm/kubectl-ports) 
+In order to get the created pub/sub service ports in a clear manner, you can use the following [kubectl ports](https://github.com/benm-stm/kubectl-ports)
+
+## Useful links
+- [Contribute](https://github.com/benm-stm/solace-scalable-k8s-operator/blob/main/CONTRIBUTE.MD)
+- [Licence](https://github.com/benm-stm/solace-scalable-k8s-operator/blob/main/LICENCE.MD)

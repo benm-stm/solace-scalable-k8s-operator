@@ -55,38 +55,46 @@ func UniqueAndNonZero(intSlice []int32) []int32 {
 Calls the solace SEMPV2 Api
 */
 func CallSolaceSempApi(
-	s *scalablev1alpha1.SolaceScalable,
+	url string,
 	apiPath string,
 	ctx context.Context,
 	solaceAdminPassword string,
 ) (string, bool, error) {
 	log := log.FromContext(ctx)
-	var retErr error
-	for i := 0; i < int(s.Spec.Replicas); i++ {
-		url := "n" + strconv.Itoa(i) + "." + s.Spec.ClusterUrl
-
-		client := &http.Client{}
-		req, err := http.NewRequest("GET", "http://"+url+"/SEMP/v2"+apiPath, nil)
-		if err != nil {
-			retErr = err
-		}
-		req.SetBasicAuth("admin", solaceAdminPassword)
-		resp, err := client.Do(req)
-		if err != nil {
-			retErr = err
-		}
-		bodyText, err := io.ReadAll(resp.Body)
-		if err != nil {
-			retErr = err
-		}
-		if resp.StatusCode == 200 {
-			return string(bodyText), true, nil
-		} else {
-			log.Info("solace Url unreachable " + url)
-		}
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url+apiPath, nil)
+	if err != nil {
+		return "", false, err
 	}
-	log.Error(retErr, "All solace Urls are unreachable ")
-	return "", false, retErr
+	req.SetBasicAuth("admin", solaceAdminPassword)
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", false, err
+	}
+	bodyText, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", false, err
+	}
+	if resp.StatusCode == 200 {
+		return string(bodyText), true, nil
+	} else {
+		log.Info("solace instance %v is unreachable with code %v", url, resp.StatusCode)
+		return "", false, nil
+	}
+}
+
+/*
+Construct Solace Semp URL from given parameters
+  - url = scalable.solace.io
+  - nodeNumber = 0
+  - return http://scalable.solace.io/SEMP/v2
+*/
+func ConstructSempUrl(url string, nodeNumber int) string {
+	url = "n" + strconv.Itoa(nodeNumber) + "." + url
+	if strings.HasPrefix(url, "http://") {
+		return url + "/SEMP/v2"
+	}
+	return "http://" + url + "/SEMP/v2"
 }
 
 func Contains(s []string, str string) bool {
