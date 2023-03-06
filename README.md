@@ -145,18 +145,33 @@ UnDeploy the controller to the cluster:
 make undeploy
 ```
 
-## Solace side configuration
+## Solace side configuration (Optional)
 We are using solace's client username attributes at our favour to store operator's behavioural datas
-
+```
+Select Message-Vpn -> Access control -> Client Usernames -> Select A client -> Attributes
+```
 <img src="images/solace-attribs.png" width="1000" title="hover text">
 
-#### Attribute Names
+**NOTE**: There is the case were the client having 1 clientUsername want to publish in different topics and want the connection to be split evenly across the cluster.
+In this case we added a simple mecanism to spawn n ports for the same couple (clientusername/protocol), after each protocol name just add **:n** as mentioned in the image above.
+
+### Attribute Names
 - pub: if we want the clientusername have openings in the publish haproxy ingress
 - sub: if we want the openings in subscribe haproxy
+### What happens in HAProxy conf and k8s SVCs ?
+
+<img src="images/haproxy.drawio.png" width="1000" title="hover text"> 
 
 **NOTE:** If no pub/sub attribute are present in the clientusername, then all ports for all active protocols in the message VPN are exposed for pub/sub
+In the above example we will have the following openings:
 
-#### Attribute Values
+|Client Username|  Protocol     | pub or sub| number of ports to open|
+|---            |:---:          |      :---:|:---:                   |
+|**botti**      |  **mqtt**     |    pub    |           2            |
+|**botti**      |  **amqp**     |    pub    |           3            |
+|**botti**      |  **amqp**     |    sub    |           1            |
+
+### Attribute Values
 Must be a list of string separated by a space.
 Here is the complete supported protocol list
 
@@ -169,9 +184,6 @@ Here is the complete supported protocol list
 |ServiceMqttTlsWebSocketListenPort       |  **mqttws**   |
 |ServiceRestIncomingPlainTextListenPort  |  **rest**     |
 |ServiceRestIncomingTlsListenPort        |  **rests**    |
-
-**NOTE**: There are cases were the clientUsername want to publish in different topics and want the connection to be split evenly across the cluster.
-In this case we added a simple mecanism to spawn n ports for the same couple (clientusername/protocol), after each protocol name just add **:n**.
 
 ## Optional kubectl-plugin
 In order to get the created pub/sub service ports in a clear manner, you can use the following [kubectl ports](https://github.com/benm-stm/kubectl-ports)
