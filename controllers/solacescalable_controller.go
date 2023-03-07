@@ -167,10 +167,10 @@ func (r *SolaceScalableReconciler) Reconcile(
 
 	// Check if solace instances are up to query SempV2
 	for i := 0; i < int((*solaceScalable).Spec.Replicas); i++ {
-		nodeBaseUrl := ConstructSempUrl((*solaceScalable).Spec.ClusterUrl, i)
+		path := "/monitor/about/api"
+		url := ConstructSempUrl((*solaceScalable).Spec.ClusterUrl, i, path, nil)
 		_, success, err := CallSolaceSempApi(
-			nodeBaseUrl,
-			"/monitor/about/api",
+			url,
 			ctx,
 			solaceAdminPassword,
 		)
@@ -178,12 +178,15 @@ func (r *SolaceScalableReconciler) Reconcile(
 			return reconcile.Result{}, err
 		}
 		if success {
+			path := "/config/msgVpns"
+			urlValues := map[string]string{
+				"select": "msgVpnName,enabled,*Port",
+				"where":  "enabled==true",
+			}
+			url := ConstructSempUrl((*solaceScalable).Spec.ClusterUrl, i, path, urlValues)
 			// Get open svc pub/sub ports
 			data, _, err := CallSolaceSempApi(
-				nodeBaseUrl,
-				"/config/msgVpns?select="+
-					"msgVpnName,enabled,*Port"+
-					"&where=enabled==true",
+				url,
 				ctx,
 				solaceAdminPassword,
 			)
@@ -202,12 +205,14 @@ func (r *SolaceScalableReconciler) Reconcile(
 			// Get solace clientUsernames
 			clientUsernames := SolaceClientUsernamesResp{}
 			for _, m := range msgVpns.Data {
+				path := "/config/msgVpns/" + m.MsgVpnName + "/clientUsernames"
+				urlValues := map[string]string{
+					"select": "clientUsername,enabled,msgVpnName",
+					"where":  "clientUsername!=*client-username",
+				}
+				url := ConstructSempUrl((*solaceScalable).Spec.ClusterUrl, i, path, urlValues)
 				data, _, err = CallSolaceSempApi(
-					nodeBaseUrl,
-					"/config/msgVpns/"+m.MsgVpnName+
-						"/clientUsernames?select="+
-						"clientUsername,enabled,msgVpnName"+
-						"&where=clientUsername!=*client-username",
+					url,
 					ctx,
 					solaceAdminPassword,
 				)
@@ -233,11 +238,14 @@ func (r *SolaceScalableReconciler) Reconcile(
 			// get client usernames attributes
 			var clientUsernamesAttributes = ClientUsernameAttributes{}
 			for _, v := range clientUsernames.Data {
+				path := "/config/msgVpns/" +
+					v.MsgVpnName +
+					"/clientUsernames/" +
+					v.ClientUsername +
+					"/attributes"
+				url := ConstructSempUrl((*solaceScalable).Spec.ClusterUrl, i, path, nil)
 				data, _, err = CallSolaceSempApi(
-					nodeBaseUrl,
-					"/config/msgVpns/"+v.MsgVpnName+
-						"/clientUsernames/"+v.ClientUsername+
-						"/attributes",
+					url,
 					ctx,
 					solaceAdminPassword,
 				)

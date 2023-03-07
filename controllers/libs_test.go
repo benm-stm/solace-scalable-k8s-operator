@@ -78,7 +78,7 @@ func TestCallSolaceSempApi(t *testing.T) {
 			defer tc.server.Close()
 			gotV, gotB, gotErr := CallSolaceSempApi(
 				tc.server.URL,
-				"",
+				//"",
 				context.TODO(),
 				"",
 			)
@@ -90,8 +90,14 @@ func TestCallSolaceSempApi(t *testing.T) {
 }
 
 func TestConstructSempUrl(t *testing.T) {
-	got := Contains([]string{"a", "b", "c", "a"}, "c")
-	want := true
+	got := ConstructSempUrl("test.io",
+		0,
+		"/api/v1",
+		map[string]string{
+			"param1": "p1==true,p2==false",
+			"param2": "p3,p4,p5",
+		})
+	want := "http://n0.test.io/SEMP/v2/api/v1?param1=p1%3D%3Dtrue,p2%3D%3Dfalse&param2=p3,p4,p5"
 	if got != want {
 		t.Errorf("got %v, wanted %v", got, want)
 	}
@@ -113,6 +119,14 @@ func TestNextAvailablePort(t *testing.T) {
 	)
 	want := 1027
 	if int(got) != want {
+		t.Errorf("got %v, wanted %v", got, want)
+	}
+}
+
+func TestReformatForSolace(t *testing.T) {
+	got := ReformatForSolace("abc%2Cab%2Ccab")
+	want := "abc,ab,cab"
+	if got != want {
 		t.Errorf("got %v, wanted %v", got, want)
 	}
 }
