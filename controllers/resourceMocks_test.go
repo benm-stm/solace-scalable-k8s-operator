@@ -38,7 +38,7 @@ var solaceScalable = scalablev1alpha1.SolaceScalable{
 			},
 		},
 		Replicas:   1,
-		ClusterUrl: "http://127.0.0.1",
+		ClusterUrl: "scalable.solace.io",
 		Haproxy: scalablev1alpha1.Haproxy{
 			Namespace: "solacescalable",
 		},

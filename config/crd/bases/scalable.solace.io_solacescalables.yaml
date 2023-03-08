@@ -163,7 +163,16 @@ spec:
                         type: string
                       size:
                         type: string
+                    required:
+                    - name
+                    - reclaimPolicy
+                    - size
                     type: object
+                required:
+                - env
+                - image
+                - name
+                - volume
                 type: object
               haproxy:
                 properties:
@@ -173,12 +182,20 @@ spec:
                     properties:
                       serviceName:
                         type: string
+                    required:
+                    - serviceName
                     type: object
                   subscribe:
                     properties:
                       serviceName:
                         type: string
+                    required:
+                    - serviceName
                     type: object
+                required:
+                - namespace
+                - publish
+                - subscribe
                 type: object
               network:
                 properties:
@@ -191,6 +208,11 @@ spec:
               replicas:
                 format: int32
                 type: integer
+            required:
+            - container
+            - haproxy
+            - pvClass
+            - replicas
             type: object
           status:
             description: SolaceScalableStatus defines the observed state of SolaceScalable
@@ -201,6 +223,9 @@ spec:
                   this file'
                 type: string
             type: object
+        required:
+        - metadata
+        - spec
         type: object
     served: true
     storage: true

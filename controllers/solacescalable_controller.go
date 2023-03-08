@@ -168,7 +168,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 	// Check if solace instances are up to query SempV2
 	for i := 0; i < int((*solaceScalable).Spec.Replicas); i++ {
 		path := "/monitor/about/api"
-		url := ConstructSempUrl((*solaceScalable).Spec.ClusterUrl, i, path, nil)
+		url := ConstructSempUrl(*solaceScalable, i, path, nil)
 		_, success, err := CallSolaceSempApi(
 			url,
 			ctx,
@@ -183,7 +183,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 				"select": "msgVpnName,enabled,*Port",
 				"where":  "enabled==true",
 			}
-			url := ConstructSempUrl((*solaceScalable).Spec.ClusterUrl, i, path, urlValues)
+			url := ConstructSempUrl(*solaceScalable, i, path, urlValues)
 			// Get open svc pub/sub ports
 			data, _, err := CallSolaceSempApi(
 				url,
@@ -210,7 +210,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 					"select": "clientUsername,enabled,msgVpnName",
 					"where":  "clientUsername!=*client-username",
 				}
-				url := ConstructSempUrl((*solaceScalable).Spec.ClusterUrl, i, path, urlValues)
+				url := ConstructSempUrl(*solaceScalable, i, path, urlValues)
 				data, _, err = CallSolaceSempApi(
 					url,
 					ctx,
@@ -243,7 +243,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 					"/clientUsernames/" +
 					v.ClientUsername +
 					"/attributes"
-				url := ConstructSempUrl((*solaceScalable).Spec.ClusterUrl, i, path, nil)
+				url := ConstructSempUrl(*solaceScalable, i, path, nil)
 				data, _, err = CallSolaceSempApi(
 					url,
 					ctx,

@@ -32,3 +32,20 @@ make manifests
 **NOTE:** Run `make --help` for more information on all potential `make` targets
 
 More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+
+### Important Note
+When testing the operator from your local machine, the operator is interacting with kubernetes cluster from its API
+This way the dns feature won't resolve the svc ip
+You have to forward the port and set it in the CR definition in the ClusterUrl field
+This way, solace will be visible to the operator
+```sh
+$ make run
+```
+open a new terminal and run the following command
+````sh
+$ kubectl port-forward -n solacescalable svc/solacescalable-0 27017:8080
+````
+
+
+you can check your solace interface using **localhost:27017**
+change you CR definition field **ClusterUrl** and set **localhost:27017**

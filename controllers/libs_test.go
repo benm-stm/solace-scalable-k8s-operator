@@ -90,14 +90,14 @@ func TestCallSolaceSempApi(t *testing.T) {
 }
 
 func TestConstructSempUrl(t *testing.T) {
-	got := ConstructSempUrl("test.io",
+	got := ConstructSempUrl(solaceScalable,
 		0,
 		"/api/v1",
 		map[string]string{
 			"param1": "p1==true,p2==false",
 			"param2": "p3,p4,p5",
 		})
-	want := "http://n0.test.io/SEMP/v2/api/v1?param1=p1%3D%3Dtrue,p2%3D%3Dfalse&param2=p3,p4,p5"
+	want := "http://n0.scalable.solace.io/SEMP/v2/api/v1?param1=p1%3D%3Dtrue,p2%3D%3Dfalse&param2=p3,p4,p5"
 	if got != want {
 		t.Errorf("got %v, wanted %v", got, want)
 	}
