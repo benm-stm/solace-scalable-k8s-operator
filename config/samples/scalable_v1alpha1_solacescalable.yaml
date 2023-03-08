@@ -4,15 +4,15 @@ metadata:
   name: solacescalable
   namespace: solacescalable
 spec:
-  replicas: 3
-  clusterUrl: scalable.dev.gcp.digital-backbone.io
+  replicas: 1
+  clusterUrl: scalable.solace.io:63810
   container:
     name: solace
     image: solace/solace-pubsub-standard:latest
     volume:
       name: storage
-      size: 50Gi
-      hostPath: /opt/storage
+      size: 20Gi
+      hostPath: /tmp/storage
     env:
     - name: username_admin_globalaccesslevel
       value: admin

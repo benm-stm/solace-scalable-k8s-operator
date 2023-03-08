@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -55,14 +56,13 @@ func UniqueAndNonZero(intSlice []int32) []int32 {
 Calls the solace SEMPV2 Api
 */
 func CallSolaceSempApi(
-	url string,
-	apiPath string,
+	u string,
 	ctx context.Context,
 	solaceAdminPassword string,
 ) (string, bool, error) {
 	log := log.FromContext(ctx)
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", url+apiPath, nil)
+	req, err := http.NewRequest("GET", u, nil)
 	if err != nil {
 		return "", false, err
 	}
@@ -78,7 +78,7 @@ func CallSolaceSempApi(
 	if resp.StatusCode == 200 {
 		return string(bodyText), true, nil
 	} else {
-		log.Info("solace instance %v is unreachable with code %v", url, resp.StatusCode)
+		log.Info("solace Api call issue", u, resp.StatusCode)
 		return "", false, nil
 	}
 }
@@ -87,14 +87,36 @@ func CallSolaceSempApi(
 Construct Solace Semp URL from given parameters
   - url = scalable.solace.io
   - nodeNumber = 0
-  - return http://scalable.solace.io/SEMP/v2
+  - params map[string]string{"p1": "p1", "p2": "p2"}
+  - return http://scalable.solace.io/SEMP/v2?p1=p1&p2=p2
 */
-func ConstructSempUrl(url string, nodeNumber int) string {
-	url = "n" + strconv.Itoa(nodeNumber) + "." + url
-	if strings.HasPrefix(url, "http://") {
-		return url + "/SEMP/v2"
+func ConstructSempUrl(
+	s scalablev1alpha1.SolaceScalable,
+	n int,
+	p string,
+	v map[string]string,
+) string {
+	var host string
+	if s.Spec.ClusterUrl == "" {
+		// use console svc kube dns
+		// Can't be tested with `make run`, the operator should be installed in the kube itself
+		port := "8080"
+		host = s.ObjectMeta.Name + "-" + strconv.Itoa(n) + "." + s.ObjectMeta.Namespace + ":" + port
+	} else {
+		// use dns or ip exposed in the net
+		host = "n" + strconv.Itoa(n) + "." + s.Spec.ClusterUrl
 	}
-	return "http://" + url + "/SEMP/v2"
+	resUrl := url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   "/SEMP/v2" + p,
+	}
+	ResValues := url.Values{}
+	for key, value := range v {
+		ResValues.Add(key, value)
+	}
+	resUrl.RawQuery = ReformatForSolace(ResValues.Encode())
+	return resUrl.String()
 }
 
 func Contains(s []string, str string) bool {
@@ -103,7 +125,6 @@ func Contains(s []string, str string) bool {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -148,4 +169,9 @@ func NextAvailablePort(
 		}
 	}
 	return p
+}
+
+// Solace doesn't accept "," encoding
+func ReformatForSolace(s string) string {
+	return strings.Replace(s, "%2C", ",", -1)
 }

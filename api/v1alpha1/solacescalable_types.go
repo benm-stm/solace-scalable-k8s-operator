@@ -26,27 +26,27 @@ import (
 
 // SolaceScalableSpec defines the desired state of SolaceScalable
 type Container struct {
-	Image  string          `json:"image,omitempty"`
-	Name   string          `json:"name,omitempty"`
-	Env    []corev1.EnvVar `json:"env,omitempty"`
-	Volume Volume          `json:"volume,omitempty"`
+	Image  string          `json:"image"`
+	Name   string          `json:"name"`
+	Env    []corev1.EnvVar `json:"env"`
+	Volume Volume          `json:"volume"`
 }
 type Volume struct {
-	Name          string `json:"name,omitempty"`
-	Size          string `json:"size,omitempty"`
+	Name          string `json:"name"`
+	Size          string `json:"size"`
 	HostPath      string `json:"hostPath,omitempty"`
-	ReclaimPolicy string `json:"reclaimPolicy,omitempty"`
+	ReclaimPolicy string `json:"reclaimPolicy"`
 }
 type SolaceScalableSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of SolaceScalable. Edit solacescalable_types.go to remove/update
-	Container  Container `json:"container,omitempty"`
-	Replicas   int32     `json:"replicas,omitempty"`
+	Container  Container `json:"container"`
+	Replicas   int32     `json:"replicas"`
 	ClusterUrl string    `json:"clusterUrl,omitempty"`
-	Haproxy    Haproxy   `json:"haproxy,omitempty"`
-	PvClass    string    `json:"pvClass,omitempty"`
+	Haproxy    Haproxy   `json:"haproxy"`
+	PvClass    string    `json:"pvClass"`
 	NetWork    Network   `json:"network,omitempty"`
 }
 
@@ -63,22 +63,22 @@ type SolaceScalableStatus struct {
 // SolaceScalable is the Schema for the solacescalables API
 type SolaceScalable struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata"`
 
-	Spec   SolaceScalableSpec   `json:"spec,omitempty"`
+	Spec   SolaceScalableSpec   `json:"spec"`
 	Status SolaceScalableStatus `json:"status,omitempty"`
 }
 
 type Haproxy struct {
-	Namespace string    `json:"namespace,omitempty"`
-	Publish   Publish   `json:"publish,omitempty"`
-	Subscribe Subscribe `json:"subscribe,omitempty"`
+	Namespace string    `json:"namespace"`
+	Publish   Publish   `json:"publish"`
+	Subscribe Subscribe `json:"subscribe"`
 }
 type Publish struct {
-	ServiceName string `json:"serviceName,omitempty"`
+	ServiceName string `json:"serviceName"`
 }
 type Subscribe struct {
-	ServiceName string `json:"serviceName,omitempty"`
+	ServiceName string `json:"serviceName"`
 }
 
 type Network struct {

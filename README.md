@@ -90,6 +90,7 @@ metadata:
   namespace: solacescalable
 spec:
   replicas: 3
+  # Optional field can be omitted
   clusterUrl: scalable.dev.gcp.digital-backbone.io
   container:
     name: solace
@@ -107,6 +108,8 @@ spec:
           name: solacescalable
           key: adminPassword
           optional: false
+  # when localManual, it will create a host path voulme in the cluster
+  # you can change this behaviour by selecying another pvClass 
   pvClass: localManual
   haproxy:
     namespace: ingress-controller
@@ -114,6 +117,7 @@ spec:
       serviceName: haproxy-pub-kubernetes-ingress
     subscribe:
       serviceName: haproxy-sub-kubernetes-ingress
+  # Optional field can be omitted (default port allocation start at 1024)
   network:
     startingAvailablePorts: 1025
 ```
@@ -139,7 +143,7 @@ make uninstall
 ```
 
 ### Undeploy controller
-UnDeploy the controller to the cluster:
+remove the controller from the cluster:
 
 ```sh
 make undeploy
