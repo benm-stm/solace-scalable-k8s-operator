@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -90,6 +91,9 @@ func TestCallSolaceSempApi(t *testing.T) {
 }
 
 func TestConstructSempUrl(t *testing.T) {
+	n := "0"
+	host := "scalable.solace.io/SEMP/v2"
+	path := "/api/v1"
 	got := ConstructSempUrl(solaceScalable,
 		0,
 		"/api/v1",
@@ -97,7 +101,7 @@ func TestConstructSempUrl(t *testing.T) {
 			"param1": "p1==true,p2==false",
 			"param2": "p3,p4,p5",
 		})
-	want := "http://n0.scalable.solace.io/SEMP/v2/api/v1?param1=p1%3D%3Dtrue,p2%3D%3Dfalse&param2=p3,p4,p5"
+	want := "http://n" + n + "." + host + path + "?" + "param1=p1%3D%3Dtrue,p2%3D%3Dfalse&param2=p3,p4,p5"
 	if got != want {
 		t.Errorf("got %v, wanted %v", got, want)
 	}
@@ -123,9 +127,11 @@ func TestNextAvailablePort(t *testing.T) {
 	}
 }
 
-func TestReformatForSolace(t *testing.T) {
-	got := ReformatForSolace("abc%2Cab%2Ccab")
-	want := "abc,ab,cab"
+func TestEncodeForSolace(t *testing.T) {
+	s := &SolaceValues{&url.Values{}}
+	s.Add("k1", "v1,v2")
+	got := s.EncodeForSolace()
+	want := "k1=v1,v2"
 	if got != want {
 		t.Errorf("got %v, wanted %v", got, want)
 	}

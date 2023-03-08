@@ -14,6 +14,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+type SolaceValues struct {
+	*url.Values
+}
+
 // Returns the resources Labels
 func Labels(s *scalablev1alpha1.SolaceScalable) map[string]string {
 	return map[string]string{
@@ -106,16 +110,17 @@ func ConstructSempUrl(
 		// use dns or ip exposed in the net
 		host = "n" + strconv.Itoa(n) + "." + s.Spec.ClusterUrl
 	}
+
 	resUrl := url.URL{
 		Scheme: "http",
 		Host:   host,
 		Path:   "/SEMP/v2" + p,
 	}
-	ResValues := url.Values{}
+	ResValues := &SolaceValues{&url.Values{}}
 	for key, value := range v {
 		ResValues.Add(key, value)
 	}
-	resUrl.RawQuery = ReformatForSolace(ResValues.Encode())
+	resUrl.RawQuery = ResValues.EncodeForSolace()
 	return resUrl.String()
 }
 
@@ -172,6 +177,6 @@ func NextAvailablePort(
 }
 
 // Solace doesn't accept "," encoding
-func ReformatForSolace(s string) string {
-	return strings.Replace(s, "%2C", ",", -1)
+func (s *SolaceValues) EncodeForSolace() string {
+	return strings.Replace(s.Encode(), "%2C", ",", -1)
 }
