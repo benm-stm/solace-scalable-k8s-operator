@@ -22,12 +22,15 @@ import (
 	"time"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
+	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
+	solace "github.com/benm-stm/solace-scalable-k8s-operator/handler/solace"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -39,6 +42,8 @@ type SolaceScalableReconciler struct {
 
 var hashStore = make(map[string]string)
 var solaceAdminPassword string
+
+var singleton bool = false
 
 //+kubebuilder:rbac:groups=scalable.solace.io,resources=solacescalables,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=scalable.solace.io,resources=solacescalables/status,verbs=get;update;patch
@@ -65,9 +70,9 @@ func (r *SolaceScalableReconciler) Reconcile(
 	request ctrl.Request,
 ) (ctrl.Result, error) {
 	// Check existance of CRD
-	//log := log.FromContext(ctx)
+	log := log.FromContext(ctx)
 	solaceScalable := &scalablev1alpha1.SolaceScalable{}
-	solaceLabels := Labels(solaceScalable)
+	solaceLabels := libs.Labels(solaceScalable)
 	if err := r.Get(
 		ctx,
 		request.NamespacedName,
@@ -167,271 +172,227 @@ func (r *SolaceScalableReconciler) Reconcile(
 
 	// Check if solace instances are up to query SempV2
 	for i := 0; i < int((*solaceScalable).Spec.Replicas); i++ {
-		path := "/monitor/about/api"
-		url := ConstructSempUrl(*solaceScalable, i, path, nil)
-		_, success, err := CallSolaceSempApi(
-			url,
-			ctx,
-			solaceAdminPassword,
-		)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		if success {
-			path := "/config/msgVpns"
-			urlValues := map[string]string{
-				"select": "msgVpnName,enabled,*Port",
-				"where":  "enabled==true",
-			}
-			url := ConstructSempUrl(*solaceScalable, i, path, urlValues)
-			// Get open svc pub/sub ports
-			data, _, err := CallSolaceSempApi(
-				url,
+		// show solace info only once
+		if !singleton {
+			aboutApi := &solace.AboutApi{}
+			err := aboutApi.GetInfos(
+				i,
+				solaceScalable,
 				ctx,
 				solaceAdminPassword,
 			)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
-
-			msgVpns, err := GetEnabledSolaceMsgVpns(
-				solaceScalable,
-				data,
+			log.Info("Solace Api Informations",
+				aboutApi.Data.Platform,
+				aboutApi.Data.SempVersion,
 			)
-			if err != nil {
+			singleton = true
+		}
+
+		msgVpns := &solace.SolaceMsgVpns{}
+		err := msgVpns.GetSolaceEnabledMsgVpns(
+			i,
+			solaceScalable,
+			ctx,
+			solaceAdminPassword,
+		)
+
+		// Get solace clientUsernames
+		cu := solace.ClientUsernames{}
+		for _, m := range msgVpns.Data {
+			if err := cu.Add(
+				solaceScalable,
+				i,
+				&m,
+				solaceAdminPassword,
+				ctx,
+			); err != nil {
 				return reconcile.Result{}, err
 			}
+		}
 
-			// Get solace clientUsernames
-			clientUsernames := SolaceClientUsernamesResp{}
+		// get client usernames attributes
+		var attr = solace.ClientUsernameAttributes{}
+		for _, v := range cu.Data {
+			if err := attr.Add(
+				solaceScalable,
+				i,
+				&v,
+				solaceAdminPassword,
+				ctx,
+			); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+
+		// Merge client username attributes in solace spec
+		svcSpecs := solace.SvcSpecs{}
+		if err := svcSpecs.MergeClientAttributesInSpec(
+			&attr,
+			&cu,
+		); err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Merge message vpn ports in solace spec
+		for ss := range svcSpecs.Data {
 			for _, m := range msgVpns.Data {
-				path := "/config/msgVpns/" + m.MsgVpnName + "/clientUsernames"
-				urlValues := map[string]string{
-					"select": "clientUsername,enabled,msgVpnName",
-					"where":  "clientUsername!=*client-username",
-				}
-				url := ConstructSempUrl(*solaceScalable, i, path, urlValues)
-				data, _, err = CallSolaceSempApi(
-					url,
-					ctx,
-					solaceAdminPassword,
-				)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
-
-				clientUsernamesTemp, err := msgVpns.GetSolaceClientUsernames(
-					solaceScalable,
-					data,
-				)
-
-				if err != nil {
-					return reconcile.Result{}, err
-				}
-
-				clientUsernames.Data = append(
-					clientUsernames.Data,
-					clientUsernamesTemp.Data...,
-				)
+				(&svcSpecs.Data[ss]).MergeMsgVpnPortsInSpec(&m)
 			}
+		}
 
-			// get client usernames attributes
-			var clientUsernamesAttributes = ClientUsernameAttributes{}
-			for _, v := range clientUsernames.Data {
-				path := "/config/msgVpns/" +
-					v.MsgVpnName +
-					"/clientUsernames/" +
-					v.ClientUsername +
-					"/attributes"
-				url := ConstructSempUrl(*solaceScalable, i, path, nil)
-				data, _, err = CallSolaceSempApi(
-					url,
-					ctx,
-					solaceAdminPassword,
-				)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
-				clientUsernameAttributes, err := GetClientUsernameAttributes(
-					solaceScalable,
-					data,
-				)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
-				clientUsernamesAttributes.Data = append(
-					clientUsernamesAttributes.Data,
-					clientUsernameAttributes.Data...,
-				)
-			}
+		// Contruct pub svcs
+		pubSvcData := SvcData{}
+		pubSvcData.ConstructSvcDatas(
+			solaceScalable,
+			&svcSpecs.Data,
+			"pub",
+		)
 
-			// Merge client username attributes in solace spec
-			pubSubsvcSpecs, err := clientUsernames.MergeClientAttributesInSpec(
-				clientUsernamesAttributes,
-			)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-
-			// Merge message vpn ports in solace spec
-			for ks := range pubSubsvcSpecs {
-				for _, m := range msgVpns.Data {
-					(&pubSubsvcSpecs[ks]).MergeMsgVpnPortsInSpec(m)
-				}
-			}
-
-			// Contruct pub svcs
-			pubPorts := []int32{}
-			pubSvcNames, cmDataPub, pubSvcsId := ConstructSvcDatas(
+		for _, svc := range pubSvcData.SvcsId {
+			newSvcPub := NewSvcPubSub(
 				solaceScalable,
-				&pubSubsvcSpecs,
-				"pub",
-				&pubPorts,
+				svc,
+				solaceLabels,
 			)
-
-			for _, svc := range pubSvcsId {
-				newSvcPub := NewSvcPubSub(
-					solaceScalable,
-					svc,
-					solaceLabels,
-				)
-				if err := r.CreatePubSubSvc(
-					solaceScalable,
-					newSvcPub,
-					ctx,
-				); err != nil {
-					return reconcile.Result{}, err
-				}
-			}
-
-			// Construct sub svc
-			subPorts := []int32{}
-			subSvcNames, cmDataSub, subSvcsId := ConstructSvcDatas(
+			if err := r.CreatePubSubSvc(
 				solaceScalable,
-				&pubSubsvcSpecs,
-				"sub",
-				&subPorts,
-			)
-
-			for _, svc := range subSvcsId {
-				newSvcSub := NewSvcPubSub(
-					solaceScalable,
-					svc,
-					solaceLabels,
-				)
-				if err := r.CreatePubSubSvc(
-					solaceScalable,
-					newSvcSub,
-					ctx,
-				); err != nil {
-					return reconcile.Result{}, err
-				}
-			}
-
-			// Check HAProxy pub services
-			FoundHaproxyPubSvc, err := r.GetExistingHaProxySvc(
-				solaceScalable,
-				solaceScalable.Spec.Haproxy.Publish.ServiceName,
-				ctx,
-			)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-
-			// Set the new pub data in the found haproxy svc
-			FoundHaproxyPubSvc.Spec.Ports = *NewSvcHaproxy(
-				solaceScalable,
-				FoundHaproxyPubSvc.Spec.Ports,
-				*cmDataPub,
-			)
-
-			// Update the existing pub haproxy
-			if err := r.UpdateHAProxySvc(
-				&hashStore,
-				FoundHaproxyPubSvc,
+				newSvcPub,
 				ctx,
 			); err != nil {
 				return reconcile.Result{}, err
 			}
+		}
 
-			// Check HAProxy sub services
-			FoundHaproxySubSvc, err := r.GetExistingHaProxySvc(
+		// Construct sub svc
+		subSvcData := SvcData{}
+		subSvcData.ConstructSvcDatas(
+			solaceScalable,
+			&svcSpecs.Data,
+			"sub",
+		)
+
+		for _, svc := range subSvcData.SvcsId {
+			newSvcSub := NewSvcPubSub(
 				solaceScalable,
-				solaceScalable.Spec.Haproxy.Subscribe.ServiceName,
-				ctx,
+				svc,
+				solaceLabels,
 			)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-
-			// Set the new sub data in the found svc
-			FoundHaproxySubSvc.Spec.Ports = *NewSvcHaproxy(
+			if err := r.CreatePubSubSvc(
 				solaceScalable,
-				FoundHaproxySubSvc.Spec.Ports,
-				*cmDataSub,
-			)
-
-			// Update the existing sub haproxy
-			if err := r.UpdateHAProxySvc(
-				&hashStore,
-				FoundHaproxySubSvc,
+				newSvcSub,
 				ctx,
 			); err != nil {
 				return reconcile.Result{}, err
 			}
+		}
 
-			// Create and update haproxy pub configmap
-			configMapPub, err := r.CreateSolaceTcpConfigmap(
-				solaceScalable,
-				cmDataPub,
-				"pub",
-				ctx,
-			)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
+		// Check HAProxy pub services
+		FoundHaproxyPubSvc, err := r.GetExistingHaProxySvc(
+			solaceScalable,
+			solaceScalable.Spec.Haproxy.Publish.ServiceName,
+			ctx,
+		)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 
-			if err := r.UpdateSolaceTcpConfigmap(
-				solaceScalable,
-				configMapPub,
-				ctx,
-				&hashStore,
-			); err != nil {
-				return reconcile.Result{}, err
-			}
+		// Set the new pub data in the found haproxy svc
+		FoundHaproxyPubSvc.Spec.Ports = *NewSvcHaproxy(
+			solaceScalable,
+			FoundHaproxyPubSvc.Spec.Ports,
+			pubSvcData.CmData,
+		)
 
-			// Create and update haproxy sub configmap
-			configMapSub, err := r.CreateSolaceTcpConfigmap(
-				solaceScalable,
-				cmDataSub,
-				"sub",
-				ctx,
-			)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-			if err := r.UpdateSolaceTcpConfigmap(
-				solaceScalable,
-				configMapSub,
-				ctx,
-				&hashStore,
-			); err != nil {
-				return reconcile.Result{}, err
-			}
+		// Update the existing pub haproxy
+		if err := r.UpdateHAProxySvc(
+			&hashStore,
+			FoundHaproxyPubSvc,
+			ctx,
+		); err != nil {
+			return reconcile.Result{}, err
+		}
 
-			// Get pub/sub services list
-			svcList, err := r.ListPubSubSvc(solaceScalable, ctx)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
+		// Check HAProxy sub services
+		FoundHaproxySubSvc, err := r.GetExistingHaProxySvc(
+			solaceScalable,
+			solaceScalable.Spec.Haproxy.Subscribe.ServiceName,
+			ctx,
+		)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 
-			// Merge pub and sub services slices
-			pubSubSvcNames := append(*pubSvcNames, *subSvcNames...)
+		// Set the new sub data in the found svc
+		FoundHaproxySubSvc.Spec.Ports = *NewSvcHaproxy(
+			solaceScalable,
+			FoundHaproxySubSvc.Spec.Ports,
+			//*cmDataSub,
+			subSvcData.CmData,
+		)
 
-			// Delete services not returned by cluster
-			if err := r.DeletePubSubSvc(svcList, &pubSubSvcNames, ctx); err != nil {
-				return reconcile.Result{}, err
-			}
+		// Update the existing sub haproxy
+		if err := r.UpdateHAProxySvc(
+			&hashStore,
+			FoundHaproxySubSvc,
+			ctx,
+		); err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Create and update haproxy pub configmap
+		configMapPub, err := r.CreateSolaceTcpConfigmap(
+			solaceScalable,
+			&pubSvcData.CmData,
+			"pub",
+			ctx,
+		)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		if err := r.UpdateSolaceTcpConfigmap(
+			solaceScalable,
+			configMapPub,
+			ctx,
+			&hashStore,
+		); err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Create and update haproxy sub configmap
+		configMapSub, err := r.CreateSolaceTcpConfigmap(
+			solaceScalable,
+			&subSvcData.CmData,
+			"sub",
+			ctx,
+		)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		if err := r.UpdateSolaceTcpConfigmap(
+			solaceScalable,
+			configMapSub,
+			ctx,
+			&hashStore,
+		); err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Get pub/sub services list
+		svcList, err := r.ListPubSubSvc(solaceScalable, ctx)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Merge pub and sub services slices
+		pubSubSvcNames := append(pubSvcData.SvcNames, subSvcData.SvcNames...)
+
+		// Delete services not returned by cluster
+		if err := r.DeletePubSubSvc(svcList, &pubSubSvcNames, ctx); err != nil {
+			return reconcile.Result{}, err
 		}
 	}
 

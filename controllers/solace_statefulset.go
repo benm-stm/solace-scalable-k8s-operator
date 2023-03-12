@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
+	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -125,8 +126,12 @@ func NewStatefulset(
 			UpdateStrategy:  v1.StatefulSetUpdateStrategy{},
 			MinReadySeconds: 0,
 			PersistentVolumeClaimRetentionPolicy: &v1.StatefulSetPersistentVolumeClaimRetentionPolicy{
-				WhenDeleted: v1.PersistentVolumeClaimRetentionPolicyType(s.Spec.Container.Volume.ReclaimPolicy),
-				WhenScaled:  v1.PersistentVolumeClaimRetentionPolicyType(s.Spec.Container.Volume.ReclaimPolicy),
+				WhenDeleted: v1.PersistentVolumeClaimRetentionPolicyType(
+					s.Spec.Container.Volume.ReclaimPolicy,
+				),
+				WhenScaled: v1.PersistentVolumeClaimRetentionPolicyType(
+					s.Spec.Container.Volume.ReclaimPolicy,
+				),
 			},
 
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -141,7 +146,9 @@ func NewStatefulset(
 						AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
-								corev1.ResourceName(s.Spec.Container.Volume.Name): resource.MustParse(s.Spec.Container.Volume.Size),
+								corev1.ResourceName(s.Spec.Container.Volume.Name): resource.MustParse(
+									s.Spec.Container.Volume.Size,
+								),
 							},
 						},
 						StorageClassName: &storageClassName,
@@ -183,12 +190,12 @@ func (r *SolaceScalableReconciler) UpdateStatefulSet(
 	log := log.FromContext(ctx)
 	newMarshal, _ := json.Marshal(ss.Spec)
 	if (*hashStore)[ss.Name] == "" ||
-		AsSha256(newMarshal) != (*hashStore)[ss.Name] {
+		libs.AsSha256(newMarshal) != (*hashStore)[ss.Name] {
 		log.Info("Updating StatefulSet", ss.Namespace, ss.Name)
 		if err := r.Update(ctx, ss); err != nil {
 			return err
 		}
-		(*hashStore)[ss.Name] = AsSha256(newMarshal)
+		(*hashStore)[ss.Name] = libs.AsSha256(newMarshal)
 	}
 	return nil
 }

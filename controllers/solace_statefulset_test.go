@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -40,7 +41,7 @@ func MockStatefulset() (
 func TestNewStatefulset(t *testing.T) {
 	got := NewStatefulset(
 		&solaceScalable,
-		Labels(&solaceScalable),
+		libs.Labels(&solaceScalable),
 	)
 	if got == nil {
 		t.Errorf("got %v, wanted *v1.StatefulSet", got)

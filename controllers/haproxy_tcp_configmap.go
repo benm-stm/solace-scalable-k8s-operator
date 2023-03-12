@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
+	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -38,7 +39,7 @@ func (r *SolaceScalableReconciler) CreateSolaceTcpConfigmap(
 	ctx context.Context,
 ) (*corev1.ConfigMap, error) {
 	log := log.FromContext(ctx)
-	configMap := NewTcpConfigmap(solaceScalable, *data, nature, Labels(solaceScalable))
+	configMap := NewTcpConfigmap(solaceScalable, *data, nature, libs.Labels(solaceScalable))
 
 	// check if the configmap exists
 	if err := r.Get(ctx,
@@ -67,13 +68,13 @@ func (r *SolaceScalableReconciler) UpdateSolaceTcpConfigmap(
 		datasMarshal, _ := json.Marshal(configMap.Data)
 
 		if (*hashStore)[configMap.Name] == "" ||
-			AsSha256(datasMarshal) != (*hashStore)[configMap.Name] {
+			libs.AsSha256(datasMarshal) != (*hashStore)[configMap.Name] {
 			log.Info("Updating HAProxy Ingress ConfigMap", configMap.Namespace, configMap.Name)
 			if err := r.Update(ctx, configMap); err != nil {
 				return err
 			}
 			//update hash to not trig update if conf has not changed
-			(*hashStore)[configMap.Name] = AsSha256(datasMarshal)
+			(*hashStore)[configMap.Name] = libs.AsSha256(datasMarshal)
 		}
 	}
 	return nil

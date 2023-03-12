@@ -4,6 +4,8 @@ import (
 	"context"
 	"strconv"
 	"testing"
+
+	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
 )
 
 /*
@@ -36,7 +38,7 @@ func MockSolaceConsoleReconciler() (*SolaceScalableReconciler, error) {
 func TestNewIngressConsole(t *testing.T) {
 	got := NewIngressConsole(
 		&solaceScalable,
-		Labels(&solaceScalable),
+		libs.Labels(&solaceScalable),
 	)
 	if got == nil {
 		t.Errorf("got %v, wanted %v", got, nil)
@@ -48,7 +50,9 @@ func TestCreateIngressConsoleRules(t *testing.T) {
 		&solaceScalable,
 	)
 	for i := 0; i < int(solaceScalable.Spec.Replicas); i++ {
-		if got[0].IngressRuleValue.HTTP.Paths[i].Backend.Service.Name != solaceScalable.ObjectMeta.Namespace+"-"+strconv.Itoa(i) {
+		if got[0].IngressRuleValue.HTTP.Paths[i].Backend.Service.Name != solaceScalable.ObjectMeta.Namespace+"-"+strconv.Itoa(
+			i,
+		) {
 			t.Errorf("got %v, wanted %v", got, nil)
 		}
 	}
@@ -62,7 +66,7 @@ func TestCreateSolaceConsoleIngress(t *testing.T) {
 
 	err = (*r).CreateSolaceConsoleIngress(
 		&solaceScalable,
-		NewIngressConsole(&solaceScalable, Labels(&solaceScalable)),
+		NewIngressConsole(&solaceScalable, libs.Labels(&solaceScalable)),
 		context.TODO(),
 	)
 	if err != nil {

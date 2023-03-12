@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
+	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
 	"github.com/rung/go-safecast"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -103,7 +104,7 @@ func (r *SolaceScalableReconciler) UpdateHAProxySvc(
 	portsMarshal, _ := json.Marshal(FoundHaproxySvc.Spec.Ports)
 
 	if (*hashStore)[FoundHaproxySvc.Name] == "" ||
-		AsSha256(portsMarshal) != (*hashStore)[FoundHaproxySvc.Name] {
+		libs.AsSha256(portsMarshal) != (*hashStore)[FoundHaproxySvc.Name] {
 		log.Info("Updating Haproxy Svc",
 			FoundHaproxySvc.Namespace,
 			FoundHaproxySvc.Name,
@@ -112,7 +113,7 @@ func (r *SolaceScalableReconciler) UpdateHAProxySvc(
 			return err
 		}
 		//update hash to not trig update if conf has not changed
-		(*hashStore)[FoundHaproxySvc.Name] = AsSha256(portsMarshal)
+		(*hashStore)[FoundHaproxySvc.Name] = libs.AsSha256(portsMarshal)
 	}
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"testing"
 
+	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,7 +55,7 @@ func MockPersistentVolume() (
 func TestNewPersistentVolume(t *testing.T) {
 	got := NewPersistentVolume(&solaceScalable,
 		strconv.Itoa(int(solaceScalable.Spec.Replicas)),
-		Labels(&solaceScalable),
+		libs.Labels(&solaceScalable),
 	)
 	if got == nil {
 		t.Errorf("got %v, wanted *corev1.PersistentVolume", got)
@@ -68,7 +69,7 @@ func TestCreateSolaceLocalPv(t *testing.T) {
 	}
 	success, err := r.CreateSolaceLocalPv(
 		&solaceScalable,
-		NewPersistentVolume(&solaceScalable, "1", Labels(&solaceScalable)),
+		NewPersistentVolume(&solaceScalable, "1", libs.Labels(&solaceScalable)),
 		context.TODO(),
 	)
 	if !success || err != nil {
