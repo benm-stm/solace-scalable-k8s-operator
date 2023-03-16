@@ -8,16 +8,20 @@ import (
 	handler "github.com/benm-stm/solace-scalable-k8s-operator/handler"
 )
 
-type AboutApi struct {
+type aboutApi struct {
 	Data struct {
-		Platform    string
-		SempVersion string
+		Platform    string `json:"platform"`
+		SempVersion string `json:"sempVersion"`
 	}
 }
 
 const aboutApiPath = "/monitor/about/api"
 
-func (a *AboutApi) GetInfos(
+func NewAboutApi() *aboutApi {
+	return &aboutApi{}
+}
+
+func (a *aboutApi) GetInfos(
 	i int,
 	s *scalablev1alpha1.SolaceScalable,
 	ctx context.Context,
@@ -29,9 +33,16 @@ func (a *AboutApi) GetInfos(
 		ctx,
 		p,
 	)
-	//fmt.Println(string(textBytes))
 	if err := json.Unmarshal(textBytes, &a); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (a *aboutApi) GetPlatform() string {
+	return a.Data.Platform
+}
+
+func (a *aboutApi) GetSempVersion() string {
+	return a.Data.SempVersion
 }

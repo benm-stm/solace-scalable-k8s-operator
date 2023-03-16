@@ -1,4 +1,4 @@
-package controllers
+package service
 
 import (
 	"context"
@@ -6,7 +6,8 @@ import (
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
-	solace "github.com/benm-stm/solace-scalable-k8s-operator/handler/solace"
+
+	spec "github.com/benm-stm/solace-scalable-k8s-operator/service/specs"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -14,21 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type SvcId struct {
-	Name           string
-	ClientUsername string
-	MsgVpnName     string
-	Port           int32
-	TargetPort     int
-	Nature         string
-}
-type SvcData struct {
-	SvcNames []string
-	CmData   map[string]string
-	SvcsId   []SvcId
-}
-
-func NewSvcPubSub(
+func NewSvc(
 	s *scalablev1alpha1.SolaceScalable,
 	svc SvcId,
 	labels map[string]string,
@@ -56,8 +43,8 @@ func AttrSpecificDatasConstruction(
 	pubSubSvcNames *[]string,
 	cmData *map[string]string,
 	svcIds *[]SvcId,
-	pppo *solace.Pppo,
-	oP *solace.SvcSpec,
+	pppo *spec.Pppo,
+	oP *spec.SvcSpec,
 	p int32,
 	nature string,
 	portsArr *[]int32,
@@ -113,8 +100,8 @@ func ConstructAttrSpecificDatas(
 	pubSubSvcNames *[]string,
 	cmData *map[string]string,
 	svcIds *[]SvcId,
-	pppo solace.Pppo,
-	oP solace.SvcSpec,
+	pppo spec.Pppo,
+	oP spec.SvcSpec,
 	p int32,
 	nature string,
 	portsArr *[]int32,
@@ -122,7 +109,7 @@ func ConstructAttrSpecificDatas(
 	if p != 0 {
 		// when ppp nil, it means that no clientusername attribues (pub/sub)
 		// are present, so make openings for all msgvpn protocol ports
-		if (pppo == solace.Pppo{}) {
+		if (pppo == spec.Pppo{}) {
 			AttrSpecificDatasConstruction(
 				s,
 				pubSubSvcNames,
@@ -153,9 +140,13 @@ func ConstructAttrSpecificDatas(
 	}
 }
 
+func NewSvcData() *SvcData {
+	return &SvcData{}
+}
+
 // pubsub SVC creation
-func (sd *SvcData) ConstructSvcDatas(s *scalablev1alpha1.SolaceScalable,
-	pubSubsvcSpecs *[]solace.SvcSpec,
+func (sd *SvcData) Set(s *scalablev1alpha1.SolaceScalable,
+	pubSubsvcSpecs *[]spec.SvcSpec,
 	nature string,
 	//portsArr *[]int32,
 ) {
@@ -185,7 +176,7 @@ func (sd *SvcData) ConstructSvcDatas(s *scalablev1alpha1.SolaceScalable,
 				&pubSubSvcNames,
 				&cmData,
 				&svcIds,
-				solace.Pppo{},
+				spec.Pppo{},
 				oP,
 				p,
 				nature,
@@ -199,14 +190,15 @@ func (sd *SvcData) ConstructSvcDatas(s *scalablev1alpha1.SolaceScalable,
 	//return &pubSubSvcNames, &cmData, svcIds
 }
 
-func (r *SolaceScalableReconciler) CreatePubSubSvc(
+func Create(
 	s *scalablev1alpha1.SolaceScalable,
 	newSvcPubSub *corev1.Service,
+	k k8sClient,
 	ctx context.Context,
 ) error {
 	log := log.FromContext(ctx)
 	foundPubSubSvc := &corev1.Service{}
-	if err := r.Get(
+	if err := k.Get(
 		ctx,
 		types.NamespacedName{
 			Name:      newSvcPubSub.Name,
@@ -215,7 +207,7 @@ func (r *SolaceScalableReconciler) CreatePubSubSvc(
 		foundPubSubSvc,
 	); err != nil {
 		log.Info("Creating pubSub SVC", newSvcPubSub.Namespace, newSvcPubSub.Name)
-		if err = r.Create(ctx, newSvcPubSub); err != nil {
+		if err = k.Create(ctx, newSvcPubSub); err != nil {
 			return err
 		}
 
@@ -223,30 +215,32 @@ func (r *SolaceScalableReconciler) CreatePubSubSvc(
 	return nil
 }
 
-func (r *SolaceScalableReconciler) ListPubSubSvc(
+func List(
 	solaceScalable *scalablev1alpha1.SolaceScalable,
+	k k8sClient,
 	ctx context.Context,
 ) (*corev1.ServiceList, error) {
 	// get existing svc list
 	svcList := &corev1.ServiceList{}
 	listOptions := &client.ListOptions{Namespace: solaceScalable.Namespace}
 
-	if err := r.List(ctx, svcList, listOptions); err != nil {
+	if err := k.List(ctx, svcList, listOptions); err != nil {
 		return nil, err
 	}
 	return svcList, nil
 }
 
-func (r *SolaceScalableReconciler) DeletePubSubSvc(
+func Delete(
 	svcList *corev1.ServiceList,
 	pubSubSvcNames *[]string,
+	k k8sClient,
 	ctx context.Context,
 ) error {
 	log := log.FromContext(ctx)
 	for _, s := range svcList.Items {
 		if !libs.IsItInSlice(s.Name, *pubSubSvcNames) && s.Spec.Ports[0].Port != 8080 {
 			foundExtraPubSubSvc := &corev1.Service{}
-			if err := r.Get(
+			if err := k.Get(
 				ctx,
 				types.NamespacedName{
 					Namespace: s.Namespace,
@@ -254,7 +248,7 @@ func (r *SolaceScalableReconciler) DeletePubSubSvc(
 				}, foundExtraPubSubSvc,
 			); err == nil {
 				log.Info("Delete PubSubSvc", s.Namespace, s.Name)
-				if err = r.Delete(ctx, foundExtraPubSubSvc); err != nil {
+				if err = k.Delete(ctx, foundExtraPubSubSvc); err != nil {
 					return err
 				}
 			}

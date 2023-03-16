@@ -1,70 +1,69 @@
-package solace
+package spec
 
-/*
 import (
 	"strings"
 
+	"github.com/benm-stm/solace-scalable-k8s-operator/handler/solace"
 	"github.com/rung/go-safecast"
 )
 
-// solace svc specification
-type SvcSpec struct {
-	MsgVpnName     string  `json:"msgVpnName"`
-	ClientUsername string  `json:"clientUsername"`
-	Pppo           []Pppo  `json:"ppp"`
-	AllMsgVpnPorts []int32 `json:"AllMsgVpnPorts"`
-}
-
-// solace svc specification
-type SvcSpecs struct {
-	Data []SvcSpec `json:"data"`
-}
-
-// Protocol, Port, PuborSub and OpeningsNumber
-type Pppo struct {
-	Protocol       string `json:"protocol"`
-	Port           int32  `json:"port"`
-	PubOrSub       string `json:"pubOrSub"`
-	OpeningsNumber int32  `json:"openingsNumber"`
+func NewSvcsSpec() *SvcsSpec {
+	return &SvcsSpec{}
 }
 
 // Add message vpn ports in solaceSpec struct
-func (s *SvcSpec) MergeMsgVpnPortsInSpec(m *MsgVpn) {
+func (s *SvcSpec) WithMsgVpnPorts(m msgVpn) {
 	protocolsExist := false
 
-	if s.MsgVpnName == m.MsgVpnName {
+	if s.MsgVpnName == m.GetName() {
 		for k, v := range s.Pppo {
 			protocolsExist = true
 			s.Pppo[k].Port = int32(
-				GetMsgVpnProtocolPort(
-					*m,
+				m.GetMsgVpnProtocolPort(
 					v.Protocol,
-					protocolsList(),
+					getProtocols(),
 				),
 			)
 		}
 
 		if !protocolsExist {
 			// Add all ports
-			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.ServiceAmqpPlainTextListenPort))
-			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.ServiceAmqpTlsListenPort))
-			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.ServiceMqttPlainTextListenPort))
-			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.ServiceMqttTlsListenPort))
-			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.ServiceMqttTlsWebSocketListenPort))
-			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.ServiceMqttWebSocketListenPort))
-			s.AllMsgVpnPorts = append(
-				s.AllMsgVpnPorts,
-				int32(m.ServiceRestIncomingPlainTextListenPort),
-			)
-			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.ServiceRestIncomingTlsListenPort))
+			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.GetAmpqpPort()))
+			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.GetAmpqpsPort()))
+			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.GetMqttPort()))
+			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.GetMqttWebSocket()))
+			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.GetMqttTlsWebSocket()))
+			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.GetMqttsPort()))
+			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.GetRest()))
+			s.AllMsgVpnPorts = append(s.AllMsgVpnPorts, int32(m.GetRests()))
 		}
 	}
 }
 
+func (b *SvcsSpec) get() SvcsSpec {
+	return *b
+}
+
+/*
+returns the correspondance of protocol given by the clientusername attributes
+for solace
+*/
+func getProtocols() solace.Protocols {
+	return solace.Protocols{
+		ServiceAmqpPlainTextListenPort:         "amqp",
+		ServiceAmqpTlsListenPort:               "amqps",
+		ServiceMqttPlainTextListenPort:         "mqtt",
+		ServiceMqttTlsListenPort:               "mqtts",
+		ServiceMqttTlsWebSocketListenPort:      "mqttws",
+		ServiceRestIncomingPlainTextListenPort: "rest",
+		ServiceRestIncomingTlsListenPort:       "rests",
+	}
+}
+
 // Add client username attributes in solaceSpec struct
-func (s *SvcSpecs) MergeClientAttributesInSpec(
-	a *ClientUsernameAttributes,
-	c *ClientUsernames,
+func (s *SvcsSpec) WithClientAttributes(
+	a *solace.ClientUsernameAttributes,
+	c *solace.ClientUsernames,
 ) error {
 	for _, c := range c.Data {
 		svcSpec := SvcSpec{}
@@ -101,18 +100,12 @@ func (s *SvcSpecs) MergeClientAttributesInSpec(
 	return nil
 }
 
-
-
-
-
-
-*/
 /*
 returns the correspondance of protocol given by the clientusername attributes
 inside solace
-
-func protocolsList() Protocols {
-	return Protocols{
+*/
+func getProtocolsList() solace.Protocols {
+	return solace.Protocols{
 		ServiceAmqpPlainTextListenPort:         "amqp",
 		ServiceAmqpTlsListenPort:               "amqps",
 		ServiceMqttPlainTextListenPort:         "mqtt",
@@ -122,4 +115,3 @@ func protocolsList() Protocols {
 		ServiceRestIncomingTlsListenPort:       "rests",
 	}
 }
-*/

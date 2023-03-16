@@ -1,4 +1,4 @@
-package controllers
+package secret
 
 import (
 	"context"
@@ -7,17 +7,28 @@ import (
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+type k8sClient interface {
+	Get(
+		ctx context.Context,
+		key types.NamespacedName,
+		obj client.Object,
+		opts ...client.GetOption,
+	) error
+}
+
 // Check if the secret already exists
-func (r *SolaceScalableReconciler) GetSolaceSecret(
+func GetSolaceSecret(
 	s *scalablev1alpha1.SolaceScalable,
+	k k8sClient,
 	ctx context.Context,
 ) (*corev1.Secret, error) {
 	log := log.FromContext(ctx)
 	foundS := &corev1.Secret{}
-	if err := r.Get(
+	if err := k.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      s.Name,

@@ -1,4 +1,4 @@
-package controllers
+package configmap
 
 import (
 	"context"
@@ -9,11 +9,23 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+type k8sClient interface {
+	Get(
+		ctx context.Context,
+		key types.NamespacedName,
+		obj client.Object,
+		opts ...client.GetOption,
+	) error
+	Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error
+	Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error
+}
+
 // Creates a new corev1.ConfigMap
-func NewTcpConfigmap(
+func New(
 	s *scalablev1alpha1.SolaceScalable,
 	data map[string]string,
 	nature string,
@@ -32,33 +44,35 @@ func NewTcpConfigmap(
 }
 
 // create tcp ingress configmap
-func (r *SolaceScalableReconciler) CreateSolaceTcpConfigmap(
+func Create(
 	solaceScalable *scalablev1alpha1.SolaceScalable,
 	data *map[string]string,
 	nature string,
+	k k8sClient,
 	ctx context.Context,
 ) (*corev1.ConfigMap, error) {
 	log := log.FromContext(ctx)
-	configMap := NewTcpConfigmap(solaceScalable, *data, nature, libs.Labels(solaceScalable))
+	configMap := New(solaceScalable, *data, nature, libs.Labels(solaceScalable))
 
 	// check if the configmap exists
-	if err := r.Get(ctx,
+	if err := k.Get(ctx,
 		types.NamespacedName{
 			Name:      configMap.Name,
 			Namespace: configMap.Namespace,
 		}, &corev1.ConfigMap{},
 	); err != nil {
 		log.Info("Creating HAProxy Ingress ConfigMap", configMap.Namespace, configMap.Name)
-		err = r.Create(ctx, configMap)
+		err = k.Create(ctx, configMap)
 		return nil, err
 	}
 	return configMap, nil
 }
 
 // update tcp ingress configmap
-func (r *SolaceScalableReconciler) UpdateSolaceTcpConfigmap(
+func Update(
 	solaceScalable *scalablev1alpha1.SolaceScalable,
 	configMap *corev1.ConfigMap,
+	k k8sClient,
 	ctx context.Context,
 	hashStore *map[string]string,
 ) error {
@@ -70,7 +84,7 @@ func (r *SolaceScalableReconciler) UpdateSolaceTcpConfigmap(
 		if (*hashStore)[configMap.Name] == "" ||
 			libs.AsSha256(datasMarshal) != (*hashStore)[configMap.Name] {
 			log.Info("Updating HAProxy Ingress ConfigMap", configMap.Namespace, configMap.Name)
-			if err := r.Update(ctx, configMap); err != nil {
+			if err := k.Update(ctx, configMap); err != nil {
 				return err
 			}
 			//update hash to not trig update if conf has not changed

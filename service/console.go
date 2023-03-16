@@ -1,4 +1,4 @@
-package controllers
+package service
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func NewSvcConsole(
+func NewConsole(
 	s *scalablev1alpha1.SolaceScalable,
 	counter int,
 ) *corev1.Service {
@@ -38,14 +38,15 @@ func NewSvcConsole(
 }
 
 // create console service
-func (r *SolaceScalableReconciler) CreateSolaceConsoleSvc(
+func CreateConsole(
 	svc *corev1.Service,
+	k k8sClient,
 	ctx context.Context,
 ) error {
 	// Check if the console svc already exists
 	log := log.FromContext(ctx)
 	foundSvc := &corev1.Service{}
-	if err := r.Get(
+	if err := k.Get(
 		ctx,
 		types.NamespacedName{
 			Name:      svc.Name,
@@ -54,7 +55,7 @@ func (r *SolaceScalableReconciler) CreateSolaceConsoleSvc(
 		foundSvc,
 	); err != nil {
 		log.Info("Creating Solace Console Svc", svc.Namespace, svc.Name)
-		if err = r.Create(ctx, svc); err != nil {
+		if err = k.Create(ctx, svc); err != nil {
 			return err
 		}
 	}
@@ -62,8 +63,9 @@ func (r *SolaceScalableReconciler) CreateSolaceConsoleSvc(
 }
 
 // delete unused console services
-func (r *SolaceScalableReconciler) DeleteSolaceConsoleSvc(
+func DeleteConsole(
 	solaceScalable *scalablev1alpha1.SolaceScalable,
+	k k8sClient,
 	ctx context.Context,
 ) error {
 	log := log.FromContext(ctx)
@@ -71,9 +73,9 @@ func (r *SolaceScalableReconciler) DeleteSolaceConsoleSvc(
 	nbSvcToCheck := 5 + counter
 	// loop indefinitely until not finding 5 existing console service
 	for {
-		svc := NewSvcConsole(solaceScalable, counter)
+		svc := NewConsole(solaceScalable, counter)
 		foundExtraSvc := &corev1.Service{}
-		if err := r.Get(
+		if err := k.Get(
 			ctx,
 			types.NamespacedName{
 				Name:      svc.Name,
@@ -84,7 +86,7 @@ func (r *SolaceScalableReconciler) DeleteSolaceConsoleSvc(
 			counter++
 		} else {
 			log.Info("Delete Solace Console Service", svc.Namespace, svc.Name)
-			if err = r.Delete(ctx, foundExtraSvc); err != nil {
+			if err = k.Delete(ctx, foundExtraSvc); err != nil {
 				return err
 			}
 		}

@@ -18,12 +18,21 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
 	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
-	solace "github.com/benm-stm/solace-scalable-k8s-operator/handler/solace"
+	"github.com/benm-stm/solace-scalable-k8s-operator/configmap"
+	"github.com/benm-stm/solace-scalable-k8s-operator/handler/solace"
+	"github.com/benm-stm/solace-scalable-k8s-operator/ingress"
+	pv "github.com/benm-stm/solace-scalable-k8s-operator/persistentvolume"
+	"github.com/benm-stm/solace-scalable-k8s-operator/secret"
+	"github.com/benm-stm/solace-scalable-k8s-operator/service"
+	specs "github.com/benm-stm/solace-scalable-k8s-operator/service/specs"
+	"github.com/benm-stm/solace-scalable-k8s-operator/statefulset"
+	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,6 +42,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
+
+const adminPwdEnvName = "username_admin_password"
 
 // SolaceScalableReconciler reconciles a SolaceScalable object
 type SolaceScalableReconciler struct {
@@ -89,14 +100,14 @@ func (r *SolaceScalableReconciler) Reconcile(
 
 	// check secret creation and store value
 	if solaceAdminPassword == "" {
-		foundSecret, err := r.GetSolaceSecret(solaceScalable, ctx)
+		foundSecret, err := secret.GetSolaceSecret(solaceScalable, r, ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		solaceAdminPassword, err = GetSecretFromKey(
+		solaceAdminPassword, err = secret.GetSecretFromKey(
 			solaceScalable,
 			foundSecret,
-			"username_admin_password",
+			adminPwdEnvName,
 		)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -104,7 +115,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 	}
 
 	// Solace statefulset CRUD
-	newSs := NewStatefulset(solaceScalable, solaceLabels)
+	newSs := statefulset.New(solaceScalable, solaceLabels)
 	if err := controllerutil.SetControllerReference(
 		solaceScalable,
 		newSs,
@@ -112,17 +123,17 @@ func (r *SolaceScalableReconciler) Reconcile(
 	); err != nil {
 		return reconcile.Result{}, err
 	}
-	err := r.CreateStatefulSet(newSs, ctx)
+	err := statefulset.Create(newSs, r, ctx)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	if err := r.UpdateStatefulSet(newSs, ctx, &hashStore); err != nil {
+	if err := statefulset.Update(newSs, r, ctx, &hashStore); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	for i := 0; i < int(solaceScalable.Spec.Replicas); i++ {
 		//create solace instance http console service
-		newSvc := NewSvcConsole(solaceScalable, i)
+		newSvc := service.NewConsole(solaceScalable, i)
 		if err := controllerutil.SetControllerReference(
 			solaceScalable,
 			newSvc,
@@ -130,41 +141,36 @@ func (r *SolaceScalableReconciler) Reconcile(
 		); err != nil {
 			return reconcile.Result{}, err
 		}
-		if err := r.CreateSolaceConsoleSvc(newSvc, ctx); err != nil {
+
+		if err := service.CreateConsole(newSvc, r, ctx); err != nil {
 			return reconcile.Result{}, err
 		}
 
-		// create solace instances PV
-		newPv := NewPersistentVolume(
+		// create solace instances localPV
+		newPv := pv.New(
 			solaceScalable,
 			strconv.Itoa(i),
 			solaceLabels,
 		)
-		if _, err := r.CreateSolaceLocalPv(
+		if _, err := pv.Create(
 			solaceScalable,
 			newPv,
+			r,
 			ctx,
 		); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
 
-	// Delete unused console services if they exist
-	if err := r.DeleteSolaceConsoleSvc(
-		solaceScalable,
-		ctx,
-	); err != nil {
-		return reconcile.Result{}, err
-	}
-
 	// Create new ingress console services
-	newIngConsole := NewIngressConsole(
+	newIngConsole := ingress.NewConsole(
 		solaceScalable,
 		solaceLabels,
 	)
-	if err := r.CreateSolaceConsoleIngress(
+	if err := ingress.CreateConsole(
 		solaceScalable,
 		newIngConsole,
+		r,
 		ctx,
 	); err != nil {
 		return reconcile.Result{}, err
@@ -174,7 +180,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 	for i := 0; i < int((*solaceScalable).Spec.Replicas); i++ {
 		// show solace info only once
 		if !singleton {
-			aboutApi := &solace.AboutApi{}
+			aboutApi := solace.NewAboutApi()
 			err := aboutApi.GetInfos(
 				i,
 				solaceScalable,
@@ -184,15 +190,16 @@ func (r *SolaceScalableReconciler) Reconcile(
 			if err != nil {
 				return reconcile.Result{}, err
 			}
+			fmt.Println("loool", aboutApi.GetPlatform())
 			log.Info("Solace Api Informations",
-				aboutApi.Data.Platform,
-				aboutApi.Data.SempVersion,
+				aboutApi.GetPlatform(),
+				aboutApi.GetSempVersion(),
 			)
 			singleton = true
 		}
 
-		msgVpns := &solace.SolaceMsgVpns{}
-		err := msgVpns.GetSolaceEnabledMsgVpns(
+		msgVpns := solace.NewMsgVpns()
+		err := msgVpns.GetEnabledMsgVpns(
 			i,
 			solaceScalable,
 			ctx,
@@ -200,7 +207,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 		)
 
 		// Get solace clientUsernames
-		cu := solace.ClientUsernames{}
+		cu := solace.NewClientUsernames()
 		for _, m := range msgVpns.Data {
 			if err := cu.Add(
 				solaceScalable,
@@ -214,7 +221,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 		}
 
 		// get client usernames attributes
-		var attr = solace.ClientUsernameAttributes{}
+		var attr = solace.NewClientUsernameAttrs()
 		for _, v := range cu.Data {
 			if err := attr.Add(
 				solaceScalable,
@@ -227,62 +234,63 @@ func (r *SolaceScalableReconciler) Reconcile(
 			}
 		}
 
-		// Merge client username attributes in solace spec
-		svcSpecs := solace.SvcSpecs{}
-		if err := svcSpecs.MergeClientAttributesInSpec(
-			&attr,
-			&cu,
+		// build pub and sub services spec
+		svcsSpec := specs.NewSvcsSpec()
+		if err := svcsSpec.WithClientAttributes(
+			attr,
+			cu,
 		); err != nil {
 			return reconcile.Result{}, err
 		}
-
 		// Merge message vpn ports in solace spec
-		for ss := range svcSpecs.Data {
+		for _, ss := range svcsSpec.Data {
 			for _, m := range msgVpns.Data {
-				(&svcSpecs.Data[ss]).MergeMsgVpnPortsInSpec(&m)
+				ss.WithMsgVpnPorts(&m)
 			}
 		}
 
-		// Contruct pub svcs
-		pubSvcData := SvcData{}
-		pubSvcData.ConstructSvcDatas(
+		// Create pub svcs
+		pubSvcData := service.NewSvcData()
+		pubSvcData.Set(
 			solaceScalable,
-			&svcSpecs.Data,
+			&svcsSpec.Data,
 			"pub",
 		)
 
 		for _, svc := range pubSvcData.SvcsId {
-			newSvcPub := NewSvcPubSub(
+			newSvcPub := service.NewSvc(
 				solaceScalable,
 				svc,
 				solaceLabels,
 			)
-			if err := r.CreatePubSubSvc(
+			if err := service.Create(
 				solaceScalable,
 				newSvcPub,
+				r,
 				ctx,
 			); err != nil {
 				return reconcile.Result{}, err
 			}
 		}
 
-		// Construct sub svc
-		subSvcData := SvcData{}
-		subSvcData.ConstructSvcDatas(
+		// Create sub svcs
+		subSvcData := service.NewSvcData()
+		subSvcData.Set(
 			solaceScalable,
-			&svcSpecs.Data,
+			&svcsSpec.Data,
 			"sub",
 		)
 
 		for _, svc := range subSvcData.SvcsId {
-			newSvcSub := NewSvcPubSub(
+			newSvcSub := service.NewSvc(
 				solaceScalable,
 				svc,
 				solaceLabels,
 			)
-			if err := r.CreatePubSubSvc(
+			if err := service.Create(
 				solaceScalable,
 				newSvcSub,
+				r,
 				ctx,
 			); err != nil {
 				return reconcile.Result{}, err
@@ -290,9 +298,10 @@ func (r *SolaceScalableReconciler) Reconcile(
 		}
 
 		// Check HAProxy pub services
-		FoundHaproxyPubSvc, err := r.GetExistingHaProxySvc(
+		FoundHaproxyPubSvc, err := ingress.GetTcp(
 			solaceScalable,
 			solaceScalable.Spec.Haproxy.Publish.ServiceName,
+			r,
 			ctx,
 		)
 		if err != nil {
@@ -300,25 +309,27 @@ func (r *SolaceScalableReconciler) Reconcile(
 		}
 
 		// Set the new pub data in the found haproxy svc
-		FoundHaproxyPubSvc.Spec.Ports = *NewSvcHaproxy(
+		FoundHaproxyPubSvc.Spec.Ports = *ingress.NewTcp(
 			solaceScalable,
 			FoundHaproxyPubSvc.Spec.Ports,
 			pubSvcData.CmData,
 		)
 
 		// Update the existing pub haproxy
-		if err := r.UpdateHAProxySvc(
+		if err := ingress.UpdateTcp(
 			&hashStore,
 			FoundHaproxyPubSvc,
+			r,
 			ctx,
 		); err != nil {
 			return reconcile.Result{}, err
 		}
 
 		// Check HAProxy sub services
-		FoundHaproxySubSvc, err := r.GetExistingHaProxySvc(
+		FoundHaproxySubSvc, err := ingress.GetTcp(
 			solaceScalable,
 			solaceScalable.Spec.Haproxy.Subscribe.ServiceName,
+			r,
 			ctx,
 		)
 		if err != nil {
@@ -326,7 +337,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 		}
 
 		// Set the new sub data in the found svc
-		FoundHaproxySubSvc.Spec.Ports = *NewSvcHaproxy(
+		FoundHaproxySubSvc.Spec.Ports = *ingress.NewTcp(
 			solaceScalable,
 			FoundHaproxySubSvc.Spec.Ports,
 			//*cmDataSub,
@@ -334,28 +345,31 @@ func (r *SolaceScalableReconciler) Reconcile(
 		)
 
 		// Update the existing sub haproxy
-		if err := r.UpdateHAProxySvc(
+		if err := ingress.UpdateTcp(
 			&hashStore,
 			FoundHaproxySubSvc,
+			r,
 			ctx,
 		); err != nil {
 			return reconcile.Result{}, err
 		}
 
 		// Create and update haproxy pub configmap
-		configMapPub, err := r.CreateSolaceTcpConfigmap(
+		configMapPub, err := configmap.Create(
 			solaceScalable,
 			&pubSvcData.CmData,
 			"pub",
+			r,
 			ctx,
 		)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 
-		if err := r.UpdateSolaceTcpConfigmap(
+		if err := configmap.Update(
 			solaceScalable,
 			configMapPub,
+			r,
 			ctx,
 			&hashStore,
 		); err != nil {
@@ -363,18 +377,20 @@ func (r *SolaceScalableReconciler) Reconcile(
 		}
 
 		// Create and update haproxy sub configmap
-		configMapSub, err := r.CreateSolaceTcpConfigmap(
+		configMapSub, err := configmap.Create(
 			solaceScalable,
 			&subSvcData.CmData,
 			"sub",
+			r,
 			ctx,
 		)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		if err := r.UpdateSolaceTcpConfigmap(
+		if err := configmap.Update(
 			solaceScalable,
 			configMapSub,
+			r,
 			ctx,
 			&hashStore,
 		); err != nil {
@@ -382,7 +398,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 		}
 
 		// Get pub/sub services list
-		svcList, err := r.ListPubSubSvc(solaceScalable, ctx)
+		svcList, err := service.List(solaceScalable, r, ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -390,8 +406,17 @@ func (r *SolaceScalableReconciler) Reconcile(
 		// Merge pub and sub services slices
 		pubSubSvcNames := append(pubSvcData.SvcNames, subSvcData.SvcNames...)
 
+		// Delete unused console services if they exist
+		if err := service.DeleteConsole(
+			solaceScalable,
+			r,
+			ctx,
+		); err != nil {
+			return reconcile.Result{}, err
+		}
+
 		// Delete services not returned by cluster
-		if err := r.DeletePubSubSvc(svcList, &pubSubSvcNames, ctx); err != nil {
+		if err := service.Delete(svcList, &pubSubSvcNames, r, ctx); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -403,9 +428,9 @@ func (r *SolaceScalableReconciler) Reconcile(
 func (r *SolaceScalableReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&scalablev1alpha1.SolaceScalable{}).
-		//Owns(&v1.StatefulSet{}).
-		//Owns(&corev1.Service{}).
-		//Owns(&corev1.ConfigMap{}).
+		Owns(&v1.StatefulSet{}).
+		Owns(&corev1.Service{}).
+		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.PersistentVolume{}).
 		Complete(r)
 }

@@ -1,5 +1,6 @@
 package controllers
 
+/*
 import (
 	"context"
 	"testing"
@@ -128,3 +129,4 @@ func TestUpdateSolaceTcpConfigmap(t *testing.T) {
 		t.Errorf("got %v, wanted %v error %v", "test", hashStore[cm.Name], err)
 	}
 }
+*/

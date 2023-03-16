@@ -9,7 +9,7 @@ import (
 )
 
 // Message vpn response struct
-type SolaceMsgVpn struct {
+type msgVpn struct {
 	MsgVpnName                             string `json:"msgVpnName"`
 	ServiceAmqpPlainTextListenPort         int    `json:"serviceAmqpPlainTextListenPort"`
 	ServiceAmqpTlsListenPort               int    `json:"serviceAmqpTlsListenPort"`
@@ -22,17 +22,18 @@ type SolaceMsgVpn struct {
 }
 
 // Message vpns array response struct
-type SolaceMsgVpns struct {
-	Data []SolaceMsgVpn `json:"data"`
+type msgVpns struct {
+	Data []msgVpn `json:"data"`
 }
 
 // protocols struct used for protocol's mapping
-type protocols struct {
+type Protocols struct {
 	ServiceAmqpPlainTextListenPort         string `json:"amqpPlainText"`
 	ServiceAmqpTlsListenPort               string `json:"amqpTls"`
 	ServiceMqttPlainTextListenPort         string `json:"mqttPlainText"`
 	ServiceMqttTlsListenPort               string `json:"mqttTls"`
-	ServiceMqttTlsWebSocketListenPort      string `json:"mqttWebSocket"`
+	ServiceMqttWebSocketListenPort         string `json:"mqttWebSocket"`
+	ServiceMqttTlsWebSocketListenPort      string `json:"mqttTlsWebSocket"`
 	ServiceRestIncomingPlainTextListenPort string `json:"restIncomingPlainText"`
 	ServiceRestIncomingTlsListenPort       string `json:"restIncomingTls"`
 }
@@ -45,7 +46,7 @@ var options = map[string]string{
 }
 
 // Returns the solace's enabled msgVpns in Json format
-func (a *SolaceMsgVpns) GetSolaceEnabledMsgVpns(
+func (a *msgVpns) GetEnabledMsgVpns(
 	i int,
 	s *scalablev1alpha1.SolaceScalable,
 	ctx context.Context,
@@ -63,23 +64,8 @@ func (a *SolaceMsgVpns) GetSolaceEnabledMsgVpns(
 	return nil
 }
 
-/*
-func GetEnabledSolaceMsgVpns(
-	s *scalablev1alpha1.SolaceScalable,
-	data string,
-) (SolaceMsgVpnsResp, error) {
-	textBytes := []byte(data)
-
-	resp := SolaceMsgVpnsResp{}
-	if err := json.Unmarshal(textBytes, &resp); err != nil {
-		return SolaceMsgVpnsResp{}, err
-	}
-	return resp, nil
-}
-*/
-
 // Protocls mapping
-func GetMsgVpnProtocolPort(m SolaceMsgVpn, s string, p protocols) int {
+func (m *msgVpn) GetMsgVpnProtocolPort(s string, p Protocols) int {
 	// supportes protocols
 	if p.ServiceAmqpPlainTextListenPort == s {
 		return m.ServiceAmqpPlainTextListenPort
@@ -103,4 +89,41 @@ func GetMsgVpnProtocolPort(m SolaceMsgVpn, s string, p protocols) int {
 		return m.ServiceRestIncomingTlsListenPort
 	}
 	return 0
+}
+
+func NewMsgVpns() *msgVpns {
+	return &msgVpns{}
+}
+
+func (a *msgVpn) GetName() string {
+	return a.MsgVpnName
+}
+
+func (a *msgVpn) GetMsgVpn() msgVpn {
+	return *a
+}
+
+func (a *msgVpn) GetAmpqpPort() int {
+	return a.ServiceAmqpPlainTextListenPort
+}
+func (a *msgVpn) GetAmpqpsPort() int {
+	return a.ServiceAmqpTlsListenPort
+}
+func (a *msgVpn) GetMqttPort() int {
+	return a.ServiceMqttPlainTextListenPort
+}
+func (a *msgVpn) GetMqttsPort() int {
+	return a.ServiceMqttTlsListenPort
+}
+func (a *msgVpn) GetMqttWebSocket() int {
+	return a.ServiceMqttWebSocketListenPort
+}
+func (a *msgVpn) GetMqttTlsWebSocket() int {
+	return a.ServiceMqttTlsWebSocketListenPort
+}
+func (a *msgVpn) GetRest() int {
+	return a.ServiceRestIncomingPlainTextListenPort
+}
+func (a *msgVpn) GetRests() int {
+	return a.ServiceRestIncomingTlsListenPort
 }

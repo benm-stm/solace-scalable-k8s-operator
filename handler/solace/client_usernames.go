@@ -33,11 +33,15 @@ var urlValues = map[string]string{
 	"where":  "clientUsername!=*client-username",
 }
 
+func NewClientUsernames() *ClientUsernames {
+	return &ClientUsernames{}
+}
+
 // Returns the solace's clientUsernames per msgVpn in Json format
 func (c *ClientUsernames) Add(
 	s *scalablev1alpha1.SolaceScalable,
 	node int,
-	msgVpn *SolaceMsgVpn,
+	msgVpn *msgVpn,
 	pwd string,
 	ctx context.Context,
 ) error {

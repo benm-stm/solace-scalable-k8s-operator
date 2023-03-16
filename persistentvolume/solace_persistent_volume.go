@@ -1,4 +1,4 @@
-package controllers
+package persistentvolume
 
 import (
 	"context"
@@ -8,10 +8,21 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func NewPersistentVolume(s *scalablev1alpha1.SolaceScalable,
+type k8sClient interface {
+	Get(
+		ctx context.Context,
+		key types.NamespacedName,
+		obj client.Object,
+		opts ...client.GetOption,
+	) error
+	Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error
+}
+
+func New(s *scalablev1alpha1.SolaceScalable,
 	instanceId string,
 	labels map[string]string,
 ) *corev1.PersistentVolume {
@@ -40,18 +51,20 @@ func NewPersistentVolume(s *scalablev1alpha1.SolaceScalable,
 	}
 }
 
-func (r *SolaceScalableReconciler) CreateSolaceLocalPv(
+// Creates a local persistent volume
+func Create(
 	s *scalablev1alpha1.SolaceScalable,
 	pv *corev1.PersistentVolume,
+	k k8sClient,
 	ctx context.Context,
 ) (bool, error) {
 	// create pvs if pvClass is localManual
 	if s.Spec.PvClass == "localManual" {
 		log := log.FromContext(ctx)
 		foundpv := &corev1.PersistentVolume{}
-		if err := r.Get(ctx, types.NamespacedName{Name: pv.Name, Namespace: pv.Namespace}, foundpv); err != nil {
+		if err := k.Get(ctx, types.NamespacedName{Name: pv.Name, Namespace: pv.Namespace}, foundpv); err != nil {
 			log.Info("Creating pv", pv.Namespace, pv.Name)
-			if err = r.Create(ctx, pv); err != nil {
+			if err = k.Create(ctx, pv); err != nil {
 				return false, err
 			}
 			return true, nil

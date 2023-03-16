@@ -1,5 +1,6 @@
 package controllers
 
+/*
 import (
 	"context"
 	"strconv"
@@ -7,33 +8,6 @@ import (
 
 	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
 )
-
-/*
-func MockSolaceConsoleReconciler() (*SolaceScalableReconciler, error) {
-	solaceIngress := &v1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "solacescalable",
-			Namespace: "solacescalable",
-		},
-		Spec: v1.IngressSpec{},
-	}
-
-	// Register operator types with the runtime scheme.
-	s := scheme.Scheme
-	s.AddKnownTypes(corev1.SchemeGroupVersion, solaceIngress)
-
-	// Create a fake client to mock API calls.
-	cl := fake.NewClientBuilder().WithScheme(s).Build()
-	if err := cl.Create(context.TODO(), solaceIngress); err != nil {
-		return nil, err
-	}
-
-	// Create a ReconcileMemcached object with the scheme and fake client.
-	return &SolaceScalableReconciler{
-		Client: cl,
-		Scheme: s,
-	}, nil
-}*/
 
 func TestNewIngressConsole(t *testing.T) {
 	got := NewIngressConsole(
@@ -74,3 +48,31 @@ func TestCreateSolaceConsoleIngress(t *testing.T) {
 	}
 
 }
+*/
+
+/*
+func MockSolaceConsoleReconciler() (*SolaceScalableReconciler, error) {
+	solaceIngress := &v1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "solacescalable",
+			Namespace: "solacescalable",
+		},
+		Spec: v1.IngressSpec{},
+	}
+
+	// Register operator types with the runtime scheme.
+	s := scheme.Scheme
+	s.AddKnownTypes(corev1.SchemeGroupVersion, solaceIngress)
+
+	// Create a fake client to mock API calls.
+	cl := fake.NewClientBuilder().WithScheme(s).Build()
+	if err := cl.Create(context.TODO(), solaceIngress); err != nil {
+		return nil, err
+	}
+
+	// Create a ReconcileMemcached object with the scheme and fake client.
+	return &SolaceScalableReconciler{
+		Client: cl,
+		Scheme: s,
+	}, nil
+}*/

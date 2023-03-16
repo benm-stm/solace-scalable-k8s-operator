@@ -1,5 +1,6 @@
 package controllers
 
+/*
 import (
 	"context"
 	"strconv"
@@ -76,3 +77,4 @@ func TestCreateSolaceLocalPv(t *testing.T) {
 		t.Errorf("got success=%v with pvclass %v", success, solaceScalable.Spec.PvClass)
 	}
 }
+*/

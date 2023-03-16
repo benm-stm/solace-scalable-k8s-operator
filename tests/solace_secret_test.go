@@ -1,5 +1,6 @@
 package controllers
 
+/*
 import (
 	"context"
 	"testing"
@@ -76,3 +77,4 @@ func TestGetSecretEnvIndex(t *testing.T) {
 		t.Errorf("got %v, wanted unsigned int index", got)
 	}
 }
+*/

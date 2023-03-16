@@ -28,6 +28,10 @@ var attrPath = "/config/msgVpns/" +
 	"<ClientUsername>" +
 	"/attributes"
 
+func NewClientUsernameAttrs() *ClientUsernameAttributes {
+	return &ClientUsernameAttributes{}
+}
+
 // Returns the solace's clientUsername attributes in Json format
 func (c *ClientUsernameAttributes) Add(
 	s *scalablev1alpha1.SolaceScalable,
@@ -44,7 +48,7 @@ func (c *ClientUsernameAttributes) Add(
 		ctx,
 		p,
 	)
-	resp := ClientUsernameAttributes{}
+	resp := NewClientUsernameAttrs()
 	if err := json.Unmarshal(textBytes, &resp); err != nil {
 		return err
 	}
@@ -54,3 +58,29 @@ func (c *ClientUsernameAttributes) Add(
 	)
 	return nil
 }
+
+/*
+func (c *clientUsernameAttributes) GetClientUsernameAttributes() []clientUsernameAttribute {
+	return c.Data
+}
+
+func (c *clientUsernameAttribute) GetClientUsernameAttribute() *clientUsernameAttribute {
+	return c
+}
+
+func (c *clientUsernameAttribute) GetMsgVpnName() string {
+	return c.MsgVpnName
+}
+
+func (c *clientUsernameAttribute) GetClientUsername() string {
+	return c.ClientUsername
+}
+
+func (c *clientUsernameAttribute) GetAttributeName() string {
+	return c.AttributeName
+}
+
+func (c *clientUsernameAttribute) GetAttributeValue() string {
+	return c.AttributeValue
+}
+*/
