@@ -1,4 +1,4 @@
-package controllers
+package ingress
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
+	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
 	"github.com/rung/go-safecast"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -13,13 +14,13 @@ import (
 )
 
 // get already existing default haproxy svc and add ports
-func NewSvcHaproxy(
+func NewTcp(
 	s *scalablev1alpha1.SolaceScalable,
 	ports []corev1.ServicePort,
 	d map[string]string,
 ) *[]corev1.ServicePort {
 	// get default
-	svcPorts := *GetDefaultHaProxyConf(ports)
+	svcPorts := *GetDefaultTcp(ports)
 	var portExist bool
 	var portIndex int
 
@@ -55,7 +56,7 @@ func NewSvcHaproxy(
 
 }
 
-func GetDefaultHaProxyConf(servicePorts []corev1.ServicePort) *[]corev1.ServicePort {
+func GetDefaultTcp(servicePorts []corev1.ServicePort) *[]corev1.ServicePort {
 	var svcPorts = []corev1.ServicePort{}
 	for _, s := range servicePorts {
 		if s.Name == "http" || s.Name == "https" || s.Name == "stat" {
@@ -66,14 +67,15 @@ func GetDefaultHaProxyConf(servicePorts []corev1.ServicePort) *[]corev1.ServiceP
 	return &svcPorts
 }
 
-func (r *SolaceScalableReconciler) GetExistingHaProxySvc(
+func GetTcp(
 	solaceScalable *scalablev1alpha1.SolaceScalable,
 	serviceName string,
+	k k8sClient,
 	ctx context.Context,
 ) (*corev1.Service, error) {
 	log := log.FromContext(ctx)
 	FoundHaproxySvc := &corev1.Service{}
-	if err := r.Get(
+	if err := k.Get(
 		ctx,
 		types.NamespacedName{
 			Namespace: solaceScalable.Spec.Haproxy.Namespace,
@@ -89,9 +91,10 @@ func (r *SolaceScalableReconciler) GetExistingHaProxySvc(
 	return FoundHaproxySvc, nil
 }
 
-func (r *SolaceScalableReconciler) UpdateHAProxySvc(
+func UpdateTcp(
 	hashStore *map[string]string,
 	FoundHaproxySvc *corev1.Service,
+	k k8sClient,
 	ctx context.Context,
 ) error {
 	log := log.FromContext(ctx)
@@ -103,16 +106,16 @@ func (r *SolaceScalableReconciler) UpdateHAProxySvc(
 	portsMarshal, _ := json.Marshal(FoundHaproxySvc.Spec.Ports)
 
 	if (*hashStore)[FoundHaproxySvc.Name] == "" ||
-		AsSha256(portsMarshal) != (*hashStore)[FoundHaproxySvc.Name] {
+		libs.AsSha256(portsMarshal) != (*hashStore)[FoundHaproxySvc.Name] {
 		log.Info("Updating Haproxy Svc",
 			FoundHaproxySvc.Namespace,
 			FoundHaproxySvc.Name,
 		)
-		if err := r.Update(ctx, FoundHaproxySvc); err != nil {
+		if err := k.Update(ctx, FoundHaproxySvc); err != nil {
 			return err
 		}
 		//update hash to not trig update if conf has not changed
-		(*hashStore)[FoundHaproxySvc.Name] = AsSha256(portsMarshal)
+		(*hashStore)[FoundHaproxySvc.Name] = libs.AsSha256(portsMarshal)
 	}
 	return nil
 }

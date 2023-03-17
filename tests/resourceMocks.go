@@ -1,4 +1,4 @@
-package controllers
+package tests
 
 import (
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
@@ -6,7 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var solaceScalable = scalablev1alpha1.SolaceScalable{
+var SolaceScalable = scalablev1alpha1.SolaceScalable{
 	TypeMeta: metav1.TypeMeta{},
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "test",
@@ -48,7 +48,8 @@ var solaceScalable = scalablev1alpha1.SolaceScalable{
 		},
 	},
 }
-var solaceScalableSecret = corev1.Secret{
+
+var SolaceScalableSecret = corev1.Secret{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "testSecret",
 		Namespace: "test",
@@ -59,7 +60,7 @@ var solaceScalableSecret = corev1.Secret{
 }
 
 var appProtocol = "http"
-var ports = []corev1.ServicePort{
+var Ports = []corev1.ServicePort{
 	{
 		Name:     "port1",
 		Protocol: "tcp",

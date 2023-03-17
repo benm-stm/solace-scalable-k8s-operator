@@ -1,4 +1,4 @@
-package controllers
+package ingress
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func NewIngressConsole(
+func NewConsole(
 	s *scalablev1alpha1.SolaceScalable,
 	labels map[string]string,
 ) *v1.Ingress {
@@ -29,12 +29,12 @@ func NewIngressConsole(
 		},
 		Spec: v1.IngressSpec{
 			IngressClassName: &icn,
-			Rules:            CreateIngressConsoleRules(s),
+			Rules:            CreateConsoleRules(s),
 		},
 	}
 }
 
-func CreateIngressConsoleRules(s *scalablev1alpha1.SolaceScalable) []v1.IngressRule {
+func CreateConsoleRules(s *scalablev1alpha1.SolaceScalable) []v1.IngressRule {
 	prefix := v1.PathTypePrefix
 	var rules = []v1.IngressRule{}
 	for i := 0; i < int(s.Spec.Replicas); i++ {
@@ -65,15 +65,16 @@ func CreateIngressConsoleRules(s *scalablev1alpha1.SolaceScalable) []v1.IngressR
 	return rules
 }
 
-func (r *SolaceScalableReconciler) CreateSolaceConsoleIngress(
+func CreateConsole(
 	solaceScalable *scalablev1alpha1.SolaceScalable,
 	ingConsole *v1.Ingress,
+	k k8sClient,
 	ctx context.Context,
 ) error {
 	//create ingress console services
 	log := log.FromContext(ctx)
 	foundIngress := &v1.Ingress{}
-	if err := r.Get(ctx,
+	if err := k.Get(ctx,
 		types.NamespacedName{
 			Name:      ingConsole.Name,
 			Namespace: ingConsole.Namespace,
@@ -81,7 +82,7 @@ func (r *SolaceScalableReconciler) CreateSolaceConsoleIngress(
 		foundIngress,
 	); err != nil {
 		log.Info("Creating Solace Console Ingress", ingConsole.Namespace, ingConsole.Name)
-		if err = r.Create(ctx, ingConsole); err != nil {
+		if err = k.Create(ctx, ingConsole); err != nil {
 			return err
 		}
 	}

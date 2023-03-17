@@ -1,10 +1,12 @@
-package controllers
+package persistentvolume
 
 import (
 	"context"
 	"strconv"
 	"testing"
 
+	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
+	"github.com/benm-stm/solace-scalable-k8s-operator/tests"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,7 +15,7 @@ import (
 )
 
 func MockPersistentVolume() (
-	*SolaceScalableReconciler,
+	*tests.SolaceScalableReconciler,
 	*corev1.PersistentVolume,
 	error,
 ) {
@@ -45,16 +47,16 @@ func MockPersistentVolume() (
 	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	return &SolaceScalableReconciler{
+	return &tests.SolaceScalableReconciler{
 		Client: cl,
 		Scheme: s,
 	}, pv, nil
 }
 
 func TestNewPersistentVolume(t *testing.T) {
-	got := NewPersistentVolume(&solaceScalable,
-		strconv.Itoa(int(solaceScalable.Spec.Replicas)),
-		Labels(&solaceScalable),
+	got := New(&tests.SolaceScalable,
+		strconv.Itoa(int(tests.SolaceScalable.Spec.Replicas)),
+		libs.Labels(&tests.SolaceScalable),
 	)
 	if got == nil {
 		t.Errorf("got %v, wanted *corev1.PersistentVolume", got)
@@ -66,12 +68,13 @@ func TestCreateSolaceLocalPv(t *testing.T) {
 	if err != nil {
 		t.Errorf("object mock fail")
 	}
-	success, err := r.CreateSolaceLocalPv(
-		&solaceScalable,
-		NewPersistentVolume(&solaceScalable, "1", Labels(&solaceScalable)),
+	success, err := Create(
+		&tests.SolaceScalable,
+		New(&tests.SolaceScalable, "1", libs.Labels(&tests.SolaceScalable)),
+		r,
 		context.TODO(),
 	)
 	if !success || err != nil {
-		t.Errorf("got success=%v with pvclass %v", success, solaceScalable.Spec.PvClass)
+		t.Errorf("got success=%v with pvclass %v", success, tests.SolaceScalable.Spec.PvClass)
 	}
 }

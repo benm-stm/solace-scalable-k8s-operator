@@ -1,9 +1,10 @@
-package controllers
+package ingress
 
 import (
 	"context"
 	"testing"
 
+	"github.com/benm-stm/solace-scalable-k8s-operator/tests"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -11,7 +12,7 @@ import (
 )
 
 func MockHaproxyReconciler() (
-	*SolaceScalableReconciler,
+	*tests.SolaceScalableReconciler,
 	*corev1.Service,
 	error,
 ) {
@@ -34,16 +35,16 @@ func MockHaproxyReconciler() (
 	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	return &SolaceScalableReconciler{
+	return &tests.SolaceScalableReconciler{
 		Client: cl,
 		Scheme: s,
 	}, haproxy, nil
 }
 
-func TestNewSvcHaproxy(t *testing.T) {
-	got := NewSvcHaproxy(
-		&solaceScalable,
-		ports,
+func TestTcp(t *testing.T) {
+	got := NewTcp(
+		&tests.SolaceScalable,
+		tests.Ports,
 		map[string]string{
 			"1883": "1883",
 			"1884": "1884",
@@ -54,8 +55,8 @@ func TestNewSvcHaproxy(t *testing.T) {
 	}
 }
 
-func TestGetDefaultHaProxyConf(t *testing.T) {
-	got := GetDefaultHaProxyConf(ports)
+func TestGetDefaultTcp(t *testing.T) {
+	got := GetDefaultTcp(tests.Ports)
 	want := &[]corev1.ServicePort{
 		{
 			Name:        "port1",
@@ -69,15 +70,16 @@ func TestGetDefaultHaProxyConf(t *testing.T) {
 	}
 }
 
-func TestGetExistingHaProxySvc(t *testing.T) {
+func TestGetTcp(t *testing.T) {
 	// serviceobject with metadata
 	r, obj, err := MockHaproxyReconciler()
 	if err != nil {
 		t.Errorf("object mock fail")
 	}
-	got, err := (*r).GetExistingHaProxySvc(
-		&solaceScalable,
+	got, err := GetTcp(
+		&tests.SolaceScalable,
 		"solacescalable",
+		r,
 		context.TODO(),
 	)
 	if err != nil {
@@ -85,15 +87,16 @@ func TestGetExistingHaProxySvc(t *testing.T) {
 	}
 }
 
-func TestUpdateHAProxySvc(t *testing.T) {
+func TestUpdateTcp(t *testing.T) {
 	r, svc, err := MockHaproxyReconciler()
 	if err != nil {
 		t.Errorf("object mock fail")
 	}
 	var hashstore = &map[string]string{}
-	err = (*r).UpdateHAProxySvc(
+	err = UpdateTcp(
 		hashstore,
 		svc,
+		r,
 		context.TODO(),
 	)
 	if err != nil {

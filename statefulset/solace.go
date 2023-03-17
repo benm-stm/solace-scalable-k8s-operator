@@ -1,19 +1,32 @@
-package controllers
+package statefulset
 
 import (
 	"context"
 	"encoding/json"
 
 	scalablev1alpha1 "github.com/benm-stm/solace-scalable-k8s-operator/api/v1alpha1"
+	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func NewStatefulset(
+type k8sClient interface {
+	Get(
+		ctx context.Context,
+		key types.NamespacedName,
+		obj client.Object,
+		opts ...client.GetOption,
+	) error
+	Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error
+	Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error
+}
+
+func New(
 	s *scalablev1alpha1.SolaceScalable,
 	labels map[string]string,
 ) *v1.StatefulSet {
@@ -125,8 +138,12 @@ func NewStatefulset(
 			UpdateStrategy:  v1.StatefulSetUpdateStrategy{},
 			MinReadySeconds: 0,
 			PersistentVolumeClaimRetentionPolicy: &v1.StatefulSetPersistentVolumeClaimRetentionPolicy{
-				WhenDeleted: v1.PersistentVolumeClaimRetentionPolicyType(s.Spec.Container.Volume.ReclaimPolicy),
-				WhenScaled:  v1.PersistentVolumeClaimRetentionPolicyType(s.Spec.Container.Volume.ReclaimPolicy),
+				WhenDeleted: v1.PersistentVolumeClaimRetentionPolicyType(
+					s.Spec.Container.Volume.ReclaimPolicy,
+				),
+				WhenScaled: v1.PersistentVolumeClaimRetentionPolicyType(
+					s.Spec.Container.Volume.ReclaimPolicy,
+				),
 			},
 
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -141,7 +158,9 @@ func NewStatefulset(
 						AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
-								corev1.ResourceName(s.Spec.Container.Volume.Name): resource.MustParse(s.Spec.Container.Volume.Size),
+								corev1.ResourceName(s.Spec.Container.Volume.Name): resource.MustParse(
+									s.Spec.Container.Volume.Size,
+								),
 							},
 						},
 						StorageClassName: &storageClassName,
@@ -153,12 +172,13 @@ func NewStatefulset(
 }
 
 // Check if the statefulset already exists
-func (r *SolaceScalableReconciler) CreateStatefulSet(
+func Create(
 	ss *v1.StatefulSet,
+	k k8sClient,
 	ctx context.Context,
 ) error {
 	log := log.FromContext(ctx)
-	if err := r.Get(
+	if err := k.Get(
 		ctx,
 		types.NamespacedName{
 			Name:      ss.Name,
@@ -167,7 +187,7 @@ func (r *SolaceScalableReconciler) CreateStatefulSet(
 		&v1.StatefulSet{},
 	); err != nil {
 		log.Info("Creating Statefulset", ss.Namespace, ss.Name)
-		if err = r.Create(ctx, ss); err != nil {
+		if err = k.Create(ctx, ss); err != nil {
 			return err
 		}
 	}
@@ -175,20 +195,21 @@ func (r *SolaceScalableReconciler) CreateStatefulSet(
 }
 
 // Update the found object and write the result back if there are any changes
-func (r *SolaceScalableReconciler) UpdateStatefulSet(
+func Update(
 	ss *v1.StatefulSet,
+	k k8sClient,
 	ctx context.Context,
 	hashStore *map[string]string,
 ) error {
 	log := log.FromContext(ctx)
 	newMarshal, _ := json.Marshal(ss.Spec)
 	if (*hashStore)[ss.Name] == "" ||
-		AsSha256(newMarshal) != (*hashStore)[ss.Name] {
+		libs.AsSha256(newMarshal) != (*hashStore)[ss.Name] {
 		log.Info("Updating StatefulSet", ss.Namespace, ss.Name)
-		if err := r.Update(ctx, ss); err != nil {
+		if err := k.Update(ctx, ss); err != nil {
 			return err
 		}
-		(*hashStore)[ss.Name] = AsSha256(newMarshal)
+		(*hashStore)[ss.Name] = libs.AsSha256(newMarshal)
 	}
 	return nil
 }

@@ -1,21 +1,23 @@
-package controllers
+package statefulset
 
 import (
 	"context"
 	"testing"
 
+	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
+	"github.com/benm-stm/solace-scalable-k8s-operator/tests"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func MockStatefulset() (
-	*SolaceScalableReconciler,
+	*tests.SolaceScalableReconciler,
 	*v1.StatefulSet,
 	error,
 ) {
-	ss := NewStatefulset(
-		&solaceScalable,
+	ss := New(
+		&tests.SolaceScalable,
 		map[string]string{
 			"app": "test",
 		},
@@ -32,28 +34,29 @@ func MockStatefulset() (
 	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	return &SolaceScalableReconciler{
+	return &tests.SolaceScalableReconciler{
 		Client: cl,
 		Scheme: s,
 	}, ss, nil
 }
-func TestNewStatefulset(t *testing.T) {
-	got := NewStatefulset(
-		&solaceScalable,
-		Labels(&solaceScalable),
+func TestNew(t *testing.T) {
+	got := New(
+		&tests.SolaceScalable,
+		libs.Labels(&tests.SolaceScalable),
 	)
 	if got == nil {
 		t.Errorf("got %v, wanted *v1.StatefulSet", got)
 	}
 }
 
-func TestCreateStatefulSet(t *testing.T) {
+func TestCreate(t *testing.T) {
 	r, ss, err := MockStatefulset()
 	if err != nil {
 		t.Errorf("object mock fail %v", err)
 	}
-	got := (*r).CreateStatefulSet(
+	got := Create(
 		ss,
+		r,
 		context.TODO(),
 	)
 	if got != nil {
@@ -61,7 +64,7 @@ func TestCreateStatefulSet(t *testing.T) {
 	}
 }
 
-func TestUpdateStatefulSet(t *testing.T) {
+func TestUpdate(t *testing.T) {
 	r, ss, err := MockStatefulset()
 	if err != nil {
 		t.Errorf("object mock fail")
@@ -69,8 +72,9 @@ func TestUpdateStatefulSet(t *testing.T) {
 	hashStore := map[string]string{}
 	// Case 1: it's the fist launch of the operator
 	// There is no saved hash
-	err = (*r).UpdateStatefulSet(
+	err = Update(
 		ss,
+		r,
 		context.TODO(),
 		&hashStore,
 	)
@@ -84,8 +88,9 @@ func TestUpdateStatefulSet(t *testing.T) {
 	oldHash := hashStore[ss.Name]
 	var replicas int32 = 10
 	ss.Spec.Replicas = &replicas
-	err = (*r).UpdateStatefulSet(
+	err = Update(
 		ss,
+		r,
 		context.TODO(),
 		&hashStore,
 	)
