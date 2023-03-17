@@ -37,31 +37,6 @@ func NewConsole(
 	}
 }
 
-// create console service
-func CreateConsole(
-	svc *corev1.Service,
-	k k8sClient,
-	ctx context.Context,
-) error {
-	// Check if the console svc already exists
-	log := log.FromContext(ctx)
-	foundSvc := &corev1.Service{}
-	if err := k.Get(
-		ctx,
-		types.NamespacedName{
-			Name:      svc.Name,
-			Namespace: svc.Namespace,
-		},
-		foundSvc,
-	); err != nil {
-		log.Info("Creating Solace Console Svc", svc.Namespace, svc.Name)
-		if err = k.Create(ctx, svc); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // delete unused console services
 func DeleteConsole(
 	solaceScalable *scalablev1alpha1.SolaceScalable,

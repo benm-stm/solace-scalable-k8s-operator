@@ -8,7 +8,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type k8sClient interface {
@@ -21,21 +20,19 @@ type k8sClient interface {
 }
 
 // Check if the secret already exists
-func GetSolaceSecret(
+func Get(
 	s *scalablev1alpha1.SolaceScalable,
 	k k8sClient,
 	ctx context.Context,
 ) (*corev1.Secret, error) {
-	log := log.FromContext(ctx)
 	foundS := &corev1.Secret{}
 	if err := k.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{
 			Name:      s.Name,
 			Namespace: s.Namespace,
 		},
 		foundS); err != nil {
-		log.Error(err, "Declared solace secret does not exist please create it!")
 		return nil, err
 	}
 	return foundS, nil

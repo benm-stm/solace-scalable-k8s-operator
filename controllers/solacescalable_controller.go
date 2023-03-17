@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -44,6 +43,8 @@ import (
 )
 
 const adminPwdEnvName = "username_admin_password"
+
+var consolePort int32 = 8080
 
 // SolaceScalableReconciler reconciles a SolaceScalable object
 type SolaceScalableReconciler struct {
@@ -100,7 +101,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 
 	// check secret creation and store value
 	if solaceAdminPassword == "" {
-		foundSecret, err := secret.GetSolaceSecret(solaceScalable, r, ctx)
+		foundSecret, err := secret.Get(solaceScalable, r, ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -132,7 +133,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 	}
 
 	for i := 0; i < int(solaceScalable.Spec.Replicas); i++ {
-		//create solace instance http console service
+		//create solace http console service
 		newSvc := service.NewConsole(solaceScalable, i)
 		if err := controllerutil.SetControllerReference(
 			solaceScalable,
@@ -142,11 +143,11 @@ func (r *SolaceScalableReconciler) Reconcile(
 			return reconcile.Result{}, err
 		}
 
-		if err := service.CreateConsole(newSvc, r, ctx); err != nil {
+		if err := service.Create(newSvc, r, ctx); err != nil {
 			return reconcile.Result{}, err
 		}
 
-		// create solace instances localPV
+		// create solace localPV if storageclass is localmanual
 		newPv := pv.New(
 			solaceScalable,
 			strconv.Itoa(i),
@@ -190,7 +191,6 @@ func (r *SolaceScalableReconciler) Reconcile(
 			if err != nil {
 				return reconcile.Result{}, err
 			}
-			fmt.Println("loool", aboutApi.GetPlatform())
 			log.Info("Solace Api Informations",
 				aboutApi.GetPlatform(),
 				aboutApi.GetSempVersion(),
@@ -199,12 +199,14 @@ func (r *SolaceScalableReconciler) Reconcile(
 		}
 
 		msgVpns := solace.NewMsgVpns()
-		err := msgVpns.GetEnabledMsgVpns(
+		if err := msgVpns.GetEnabledMsgVpns(
 			i,
 			solaceScalable,
 			ctx,
 			solaceAdminPassword,
-		)
+		); err != nil {
+			return reconcile.Result{}, err
+		}
 
 		// Get solace clientUsernames
 		cu := solace.NewClientUsernames()
@@ -258,13 +260,13 @@ func (r *SolaceScalableReconciler) Reconcile(
 		)
 
 		for _, svc := range pubSvcData.SvcsId {
-			newSvcPub := service.NewSvc(
+			newSvcPub := service.New(
 				solaceScalable,
 				svc,
 				solaceLabels,
 			)
 			if err := service.Create(
-				solaceScalable,
+				//solaceScalable,
 				newSvcPub,
 				r,
 				ctx,
@@ -282,13 +284,13 @@ func (r *SolaceScalableReconciler) Reconcile(
 		)
 
 		for _, svc := range subSvcData.SvcsId {
-			newSvcSub := service.NewSvc(
+			newSvcSub := service.New(
 				solaceScalable,
 				svc,
 				solaceLabels,
 			)
 			if err := service.Create(
-				solaceScalable,
+				//solaceScalable,
 				newSvcSub,
 				r,
 				ctx,
@@ -416,7 +418,7 @@ func (r *SolaceScalableReconciler) Reconcile(
 		}
 
 		// Delete services not returned by cluster
-		if err := service.Delete(svcList, &pubSubSvcNames, r, ctx); err != nil {
+		if err := service.Delete(svcList, &pubSubSvcNames, &consolePort, r, ctx); err != nil {
 			return reconcile.Result{}, err
 		}
 	}

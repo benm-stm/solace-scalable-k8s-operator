@@ -1,11 +1,11 @@
-package controllers
+package configmap
 
-/*
 import (
 	"context"
 	"testing"
 
 	libs "github.com/benm-stm/solace-scalable-k8s-operator/common"
+	"github.com/benm-stm/solace-scalable-k8s-operator/tests"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -13,7 +13,7 @@ import (
 )
 
 func MockConfigmap() (
-	*SolaceScalableReconciler,
+	*tests.SolaceScalableReconciler,
 	*corev1.ConfigMap,
 	error,
 ) {
@@ -38,7 +38,7 @@ func MockConfigmap() (
 	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	return &SolaceScalableReconciler{
+	return &tests.SolaceScalableReconciler{
 		Client: cl,
 		Scheme: s,
 	}, cm, nil
@@ -49,13 +49,13 @@ func TestNewtcpConfigmap(t *testing.T) {
 	data := map[string]string{
 		"1883": "solasescalable/test-svc:1883",
 	}
-	got := NewTcpConfigmap(
-		&solaceScalable,
+	got := New(
+		&tests.SolaceScalable,
 		data,
 		nature,
-		libs.Labels(&solaceScalable),
+		libs.Labels(&tests.SolaceScalable),
 	)
-	if got.ObjectMeta.Name != solaceScalable.ObjectMeta.Name+"-"+
+	if got.ObjectMeta.Name != tests.SolaceScalable.ObjectMeta.Name+"-"+
 		nature+"-tcp-ingress" ||
 		got.Data["1883"] != data["1883"] {
 		t.Errorf("got %v, wanted %v", got, nil)
@@ -70,10 +70,11 @@ func TestCreateSolaceTcpConfigmap(t *testing.T) {
 		"1880": "test-srv:1880",
 	}
 
-	cm, err := (*r).CreateSolaceTcpConfigmap(
-		&solaceScalable,
+	cm, err := Create(
+		&tests.SolaceScalable,
 		&data,
 		nature,
+		r,
 		context.TODO(),
 	)
 	if cm == nil || err != nil {
@@ -82,10 +83,11 @@ func TestCreateSolaceTcpConfigmap(t *testing.T) {
 
 	//when cm doesn't exist
 	nature = "testNotFound"
-	cm, err = (*r).CreateSolaceTcpConfigmap(
-		&solaceScalable,
+	cm, err = Create(
+		&tests.SolaceScalable,
 		&data,
 		nature,
+		r,
 		context.TODO(),
 	)
 	if cm != nil || err != nil {
@@ -100,9 +102,10 @@ func TestUpdateSolaceTcpConfigmap(t *testing.T) {
 	}
 	// when does not exist
 	hashStore := map[string]string{}
-	err = (*r).UpdateSolaceTcpConfigmap(
-		&solaceScalable,
+	err = Update(
+		&tests.SolaceScalable,
 		cm,
+		r,
 		context.TODO(),
 		&hashStore,
 	)
@@ -119,9 +122,10 @@ func TestUpdateSolaceTcpConfigmap(t *testing.T) {
 	hashStore = map[string]string{
 		cm.Name: "test",
 	}
-	err = (*r).UpdateSolaceTcpConfigmap(
-		&solaceScalable,
+	err = Update(
+		&tests.SolaceScalable,
 		cm,
+		r,
 		context.TODO(),
 		&hashStore,
 	)
@@ -129,4 +133,3 @@ func TestUpdateSolaceTcpConfigmap(t *testing.T) {
 		t.Errorf("got %v, wanted %v error %v", "test", hashStore[cm.Name], err)
 	}
 }
-*/

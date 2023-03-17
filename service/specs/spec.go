@@ -40,10 +40,6 @@ func (s *SvcSpec) WithMsgVpnPorts(m msgVpn) {
 	}
 }
 
-func (b *SvcsSpec) get() SvcsSpec {
-	return *b
-}
-
 /*
 returns the correspondance of protocol given by the clientusername attributes
 for solace
@@ -98,20 +94,4 @@ func (s *SvcsSpec) WithClientAttributes(
 		s.Data = append(s.Data, svcSpec)
 	}
 	return nil
-}
-
-/*
-returns the correspondance of protocol given by the clientusername attributes
-inside solace
-*/
-func getProtocolsList() solace.Protocols {
-	return solace.Protocols{
-		ServiceAmqpPlainTextListenPort:         "amqp",
-		ServiceAmqpTlsListenPort:               "amqps",
-		ServiceMqttPlainTextListenPort:         "mqtt",
-		ServiceMqttTlsListenPort:               "mqtts",
-		ServiceMqttTlsWebSocketListenPort:      "mqttws",
-		ServiceRestIncomingPlainTextListenPort: "rest",
-		ServiceRestIncomingTlsListenPort:       "rests",
-	}
 }

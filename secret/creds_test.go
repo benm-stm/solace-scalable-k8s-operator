@@ -1,10 +1,10 @@
-package controllers
+package secret
 
-/*
 import (
 	"context"
 	"testing"
 
+	"github.com/benm-stm/solace-scalable-k8s-operator/tests"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -12,7 +12,7 @@ import (
 )
 
 func MockSecret() (
-	*SolaceScalableReconciler,
+	*tests.SolaceScalableReconciler,
 	*corev1.Secret,
 	error,
 ) {
@@ -40,7 +40,7 @@ func MockSecret() (
 	}
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	return &SolaceScalableReconciler{
+	return &tests.SolaceScalableReconciler{
 		Client: cl,
 		Scheme: s,
 	}, sec, nil
@@ -51,7 +51,9 @@ func TestGetSolaceSecret(t *testing.T) {
 	if err != nil {
 		t.Errorf("object mock fail")
 	}
-	got, err := r.GetSolaceSecret(&solaceScalable,
+	got, err := Get(
+		&tests.SolaceScalable,
+		r,
 		context.TODO(),
 	)
 	if err == nil {
@@ -60,8 +62,9 @@ func TestGetSolaceSecret(t *testing.T) {
 }
 
 func TestGetSecretFromKey(t *testing.T) {
-	got, err := GetSecretFromKey(&solaceScalable,
-		&solaceScalableSecret,
+	got, err := GetSecretFromKey(
+		&tests.SolaceScalable,
+		&tests.SolaceScalableSecret,
 		"testSecret",
 	)
 	if got == "" || err != nil {
@@ -70,11 +73,11 @@ func TestGetSecretFromKey(t *testing.T) {
 }
 
 func TestGetSecretEnvIndex(t *testing.T) {
-	got, err := GetSecretEnvIndex(&solaceScalable,
+	got, err := GetSecretEnvIndex(
+		&tests.SolaceScalable,
 		"testSecret",
 	)
 	if got == -1 || err != nil {
 		t.Errorf("got %v, wanted unsigned int index", got)
 	}
 }
-*/
