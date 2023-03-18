@@ -90,7 +90,7 @@ metadata:
   namespace: solacescalable
 spec:
   replicas: 3
-  # Optional field can be omitted
+  # Optional field can be omitted, when ommited service dns inside the cluster will be used
   clusterUrl: scalable.dev.gcp.digital-backbone.io
   container:
     name: solace
@@ -108,6 +108,8 @@ spec:
           name: solacescalable
           key: adminPassword
           optional: false
+          # Optional field, default to Retain
+          retainPolicy: Retain
   # when localManual, it will create a host path voulme in the cluster
   # you can change this behaviour by selecying another pvClass 
   pvClass: localManual

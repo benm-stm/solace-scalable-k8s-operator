@@ -35,7 +35,7 @@ type Volume struct {
 	Name          string `json:"name"`
 	Size          string `json:"size"`
 	HostPath      string `json:"hostPath,omitempty"`
-	ReclaimPolicy string `json:"reclaimPolicy"`
+	ReclaimPolicy string `json:"reclaimPolicy,omitempty"`
 }
 type SolaceScalableSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
